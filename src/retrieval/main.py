@@ -1,96 +1,129 @@
 """
-Lab 3 FastAPI API.
+Lab 4 FastAPI API.
 
-@author: Aarti Dashore, Alok Katiyar
+@author: Kevin Lundeen
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid=190380
-@version: 1.1.0+w26
+@version: 2.0.0+w26
 """
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
+from starlette.staticfiles import StaticFiles
 
-from src.retrieval.retriever import DocumentRetriever
+from retrieval.llm import LLMClient
+from retrieval.rag import RAGSystem
+from retrieval.retriever import DocumentRetriever
 
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-retriever: DocumentRetriever | None = None
+# Global retriever instance
+retriever: Optional[DocumentRetriever] = None
+rag_system: Optional[RAGSystem] = None
+
+
+class RAGRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+    n_context_docs: int = Field(default=3, ge=1, le=10)
+    temperature: float = Field(default=0.7, ge=0.0, le=1.5)
+
+
+class RAGResponse(BaseModel):
+    question: str
+    answer: str
+    context: list[dict]
+    context_count: int
 
 
 class HealthResponse(BaseModel):
+    """Response model for health check."""
+
     status: str
     documents_indexed: int
     message: str
+    rag_available: bool  # NEW
 
 
 class SearchRequest(BaseModel):
+    """Request model for search."""
+
     query: str
     n_results: int = 5
-
-    # Pipeline switches (for UI / extra credit comparison)
+    use_hybrid: bool = True
     use_reranking: bool = True
-    compare: bool = False
-    use_hybrid: bool = False
 
 
 class SearchResponse(BaseModel):
+    """Response model for search."""
+
     query: str
     results: list[dict]
     count: int
 
 
+# Define lifespan function to load models on startup
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global retriever
-    retriever = DocumentRetriever(use_reranking=True)
+    # Code before the 'yield' is executed during application startup
     try:
-        logger.info("Loading models and indexing documents...")
-        num_docs = retriever.index_documents("documents")
-        logger.info("Indexed %s documents successfully!", num_docs)
-    except Exception as e:
-        logger.error("Startup failed: %s", str(e))
+        logger.info("Loading models...")
 
-    yield
+        # Index documents from the documents/ directory
+        global retriever
+        retriever = DocumentRetriever()
+        llm_client = LLMClient()  # default = Ollama
+        global rag_system
+        rag_system = RAGSystem(retriever=retriever, llm_client=llm_client)
+        num_docs = retriever.index_documents("documents")
+        logger.info(f"Indexed {num_docs} chunks successfully!")
+    except Exception as e:
+        # Don't crash the server, but log the error
+        logger.error(f"Failed to load model: {str(e)}")
+
+    yield  # The application starts receiving requests after the yield
+
+    # Code after the 'yield' is executed during application shutdown
     logger.info("Application shutting down (lifespan)...")
 
 
+# Initialize FastAPI app
 app = FastAPI(
-    title="Document Retrieval System API",
-    description="Semantic search system using ChromaDB + sentence transformers, with optional Cross-Encoder Re-Ranking",
-    version="1.1.0",
+    title="FIXME: API Title",
+    description="Lab3: Semantic search system using ChromaDB and sentence transformers",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
+# Add cross-origin resource sharing (CORS) middleware
+# (gives browser permission to call our API)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    # In production, specify actual origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-@app.post("/search")
+@app.post("/search", response_model=SearchResponse)
 async def search(request: SearchRequest):
     """
     Search for documents relevant to the query.
 
-    Modes:
-      - compare=False: returns {query,results,count}
-      - compare=True: returns {query,semantic,reranked,hybrid,hybrid_reranked,reranking_changed}
+    Args:
+        request: SearchRequest with query and optional n_results
 
-    Notes:
-      - distance is always included (vector search)
-      - rerank_score is included for reranked results
-      - rrf_score/bm25_score are included for hybrid results
+    Returns:
+        SearchResponse with results
     """
     if retriever is None:
         raise HTTPException(status_code=503, detail="Retriever not initialized")
@@ -102,99 +135,108 @@ async def search(request: SearchRequest):
         raise HTTPException(status_code=400, detail="n_results must be between 1 and 20")
 
     try:
-        if request.compare:
-            # Semantic only
-            semantic = retriever.search(
-                request.query,
-                request.n_results,
-                use_reranking=False,
-                use_hybrid=False,
-            )
-
-            # Semantic + rerank
-            reranked = retriever.search(
-                request.query,
-                request.n_results,
-                use_reranking=True,
-                use_hybrid=False,
-            )
-
-            # Hybrid only
-            hybrid = retriever.search(
-                request.query,
-                request.n_results,
-                use_reranking=False,
-                use_hybrid=True,
-            )
-
-            # Hybrid + rerank
-            hybrid_reranked = retriever.search(
-                request.query,
-                request.n_results,
-                use_reranking=True,
-                use_hybrid=True,
-            )
-
-            s_ids = [r.get("id") for r in semantic]
-            r_ids = [r.get("id") for r in reranked]
-            changed = s_ids != r_ids
-
-            return {
-                "query": request.query,
-                "semantic": semantic,
-                "reranked": reranked,
-                "hybrid": hybrid,
-                "hybrid_reranked": hybrid_reranked,
-                "reranking_changed": changed,
-            }
-
         results = retriever.search(
             request.query,
             request.n_results,
+            use_hybrid=request.use_hybrid,
             use_reranking=request.use_reranking,
-            use_hybrid=request.use_hybrid,  # ✅ minimal but critical
         )
         return SearchResponse(query=request.query, results=results, count=len(results))
-
     except Exception as e:
-        logger.error("Search error: %s", str(e))
+        logger.error(f"Search error: {str(e)}")
         raise HTTPException(status_code=500, detail="Search failed")
 
 
+# Implement health check endpoint
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
+    global retriever, rag_system
+
+    documents_indexed = 0
+    if retriever is not None:
+        documents_indexed = getattr(retriever, "document_count", 0) or 0
+
+    rag_available = False
+    if rag_system is not None:
+        llm = getattr(rag_system, "llm_client", None)
+        if llm is not None:
+            try:
+                rag_available = bool(llm.is_available())  # <-- change here
+            except Exception:
+                rag_available = False
+
     if retriever is None:
         return HealthResponse(
-            status="healthy",
-            message="API is running; retriever not initialized yet",
+            status="unhealthy",
             documents_indexed=0,
+            message="Retriever not initialized",
+            rag_available=rag_available,
         )
 
     return HealthResponse(
         status="healthy",
-        message="API is running and ready",
-        documents_indexed=retriever.document_count,
+        documents_indexed=documents_indexed,
+        message="Service is running",
+        rag_available=rag_available,
     )
 
 
+# Add error handler for general exceptions
 @app.exception_handler(Exception)
 async def general_exception_handler(_request, exc):
-    logger.error("Unexpected error: %s", str(exc))
+    """Handle unexpected exceptions."""
+    logger.error(f"Unexpected error: {str(exc)}")
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
+# Create a test endpoint that raises exceptions (only for testing!)
 @app.get("/test/error")
 async def test_error():
     raise RuntimeError("Something went wrong")
 
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.post("/rag", response_model=RAGResponse)
+async def rag_query(request: RAGRequest):
+    """
+    Run full RAG pipeline:
+      - retrieve docs
+      - build context
+      - generate answer
+      - return answer + sources
+    """
+
+    if not request.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+    if rag_system is None:
+        raise HTTPException(status_code=503, detail="RAG system not initialized")
+    try:
+        result = rag_system.query(
+            question=request.question,
+            n_results=request.n_context_docs,
+            temperature=request.temperature,
+        )
+
+        return RAGResponse(
+            question=result["question"],
+            answer=result["answer"],
+            context=result["sources"],
+            context_count=len(result["sources"]),
+        )
+
+    except Exception:
+        logging.exception("RAG query failed")
+        raise HTTPException(
+            status_code=502,
+            detail="LLM service unavailable or error occurred",
+        )
 
 
-@app.get("/")
-async def ui():
-    return FileResponse("static/index.html")
-
+# Mount static files LAST - catches all remaining routes
+# including / --> /static/index.html, and
+#           /stlye.css --> /static/style.css
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
-    print("uvicorn src.retrieval.main:app --reload")
+    print("To run this application:")
+    print("uv run uvicorn src.retrieval.main:app --reload")
+    print("\nThen open: http://localhost:8000")

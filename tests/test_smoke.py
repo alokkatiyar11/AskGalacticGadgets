@@ -1,16 +1,16 @@
 """
 Lab 3 FastAPI API.
-@author: Alok katiyar, Aarti Dashore
+@author: Kevin Lundeen
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
-@version: 0.1.0+w26
+@version: 2.0.0+w26
 """
 
 import pytest
 from fastapi.testclient import TestClient
 
-from src.retrieval.main import app
+from retrieval.main import app
 
 
 @pytest.fixture

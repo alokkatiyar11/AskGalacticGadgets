@@ -1,154 +1,203 @@
-"""
-Unit tests for retrieval.main (FastAPI module).
-
-Covers:
-- lifespan() success + exception path
-- /health endpoint healthy + unhealthy paths
-- /search endpoint validation (empty query, n_results bounds)
-- /search endpoint error handling (retriever missing -> 503, retriever throws -> 500)
-- __main__ guard prints uvicorn command
-
-These tests call the endpoint coroutines directly to keep them fast and deterministic.
-"""
+# tests/test_main.py
 
 import runpy
+from contextlib import contextmanager
+from unittest.mock import Mock, patch
 
-import pytest
-from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-import retrieval.main as m
-
-
-@pytest.mark.anyio
-async def test_lifespan_success_sets_retriever(monkeypatch):
-    """Cover normal lifespan path where DocumentRetriever() succeeds."""
-
-    class GoodRetriever:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def index_documents(self, *args, **kwargs):
-            return 0
-
-        def search(self, query, n_results=5, *args, **kwargs):
-            return [{"id": "sample4.txt", "text": "x", "distance": 0.1}]
-
-    monkeypatch.setattr(m, "DocumentRetriever", GoodRetriever)
-
-    # Ensure starting state
-    m.retriever = None
-
-    async with m.lifespan(FastAPI()):
-        # retriever should be created inside lifespan
-        assert m.retriever is not None
+import retrieval.main as main
 
 
-@pytest.mark.anyio
-async def test_health_healthy_when_no_retriever():
-    m.retriever = None
-    resp = await m.health_check()
-    assert resp.status == "healthy"
-    assert len(resp.message) > 0
-    assert resp.documents_indexed == 0
+@contextmanager
+def _client_with_mocks(*, search_results=None, rag_result=None, rag_raises=False):
+    if search_results is None:
+        search_results = [{"doc_id": "d1", "text": "hello", "score": 1.0}]
+
+    if rag_result is None:
+        rag_result = {
+            "question": "q",
+            "answer": "a",
+            "sources": [{"doc_id": "d1", "text": "ctx"}],
+        }
+
+    mock_retriever = Mock()
+    mock_retriever.index_documents.return_value = 1
+    mock_retriever.search.return_value = search_results
+    mock_retriever.document_count = 1
+
+    mock_rag = Mock()
+
+    mock_llm = Mock()
+    mock_llm.is_available.return_value = True
+    mock_rag.llm_client = mock_llm  # <-- IMPORTANT (health uses rag_system.llm_client)
+
+    if rag_raises:
+        mock_rag.query.side_effect = RuntimeError("llm failed")
+    else:
+        mock_rag.query.return_value = rag_result
+
+    with (
+        patch("retrieval.main.DocumentRetriever", return_value=mock_retriever),
+        patch("retrieval.main.LLMClient", return_value=mock_llm),  # <-- better
+        patch("retrieval.main.RAGSystem", return_value=mock_rag),
+    ):
+        with TestClient(main.app) as client:
+            client._mock_retriever = mock_retriever  # type: ignore[attr-defined]
+            client._mock_rag = mock_rag  # type: ignore[attr-defined]
+            yield client
 
 
-@pytest.mark.anyio
-async def test_health_healthy_with_retriever():
-    """Cover /health healthy path (retriever exists)."""
-
-    class FakeRetriever:
-        @property
-        def document_count(self):
-            return 42
-
-    m.retriever = FakeRetriever()
-    resp = await m.health_check()
-
-    assert resp.status == "healthy"
-    assert resp.documents_indexed == 42
+def test_health_ok():
+    with _client_with_mocks() as client:
+        r = client.get("/health")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["status"] == "healthy"
+        assert "rag_available" in data
 
 
-@pytest.mark.anyio
-async def test_search_503_when_no_retriever():
-    """Cover search() 503 branch when retriever isn't initialized (your missing line around 107)."""
-    m.retriever = None
-    req = m.SearchRequest(query="hello", n_results=5)
-
-    with pytest.raises(m.HTTPException) as exc:
-        await m.search(req)
-
-    assert exc.value.status_code == 503
+def test_search_empty_query_400():
+    with _client_with_mocks() as client:
+        r = client.post("/search", json={"query": "   ", "n_results": 3})
+        assert r.status_code == 400
+        assert "Query cannot be empty" in r.text
 
 
-@pytest.mark.anyio
-async def test_search_400_empty_query():
-    """Cover search() empty query validation branch."""
+def test_search_success_calls_retriever():
+    search_results = [{"doc_id": "d1", "text": "t1", "score": 0.9}]
+    with _client_with_mocks(search_results=search_results) as client:
+        r = client.post(
+            "/search",
+            json={
+                "query": "hello",
+                "n_results": 2,
+                "use_hybrid": True,
+                "use_reranking": False,
+            },
+        )
+        assert r.status_code == 200
+        data = r.json()
 
-    class FakeRetriever:
-        def search(self, query, n_results=5):
-            return []
+        # keep this robust: count should match returned results length
+        assert data["query"] == "hello"
+        assert data["count"] == len(data["results"])
+        assert data["results"][0]["doc_id"] == "d1"
 
-    m.retriever = FakeRetriever()
-    req = m.SearchRequest(query="   ", n_results=5)
+        mock_retriever = client._mock_retriever  # type: ignore[attr-defined]
+        mock_retriever.search.assert_called_once()
 
-    with pytest.raises(m.HTTPException) as exc:
-        await m.search(req)
-
-    assert exc.value.status_code == 400
-
-
-@pytest.mark.anyio
-async def test_search_400_bad_n_results_low_high():
-    """Cover search() n_results bounds checks."""
-
-    class FakeRetriever:
-        def search(self, query, n_results=5):
-            return []
-
-    m.retriever = FakeRetriever()
-
-    with pytest.raises(m.HTTPException) as exc1:
-        await m.search(m.SearchRequest(query="x", n_results=0))
-    assert exc1.value.status_code == 400
-
-    with pytest.raises(m.HTTPException) as exc2:
-        await m.search(m.SearchRequest(query="x", n_results=21))
-    assert exc2.value.status_code == 400
+        args, kwargs = mock_retriever.search.call_args
+        assert args[0] == "hello"
+        assert args[1] == 2
+        assert kwargs["use_hybrid"] is True
+        assert kwargs["use_reranking"] is False
 
 
-@pytest.mark.anyio
-async def test_search_500_when_retriever_throws():
-    """Cover search() exception handler (your missing 118-120)."""
+def test_rag_success():
+    rag_result = {
+        "question": "What is RAG?",
+        "answer": "RAG combines retrieval + generation.",
+        "sources": [{"doc_id": "doc1", "text": "RAG info"}],
+    }
 
-    class BoomRetriever:
-        def search(self, query, n_results=5):
-            raise RuntimeError("boom")
+    with _client_with_mocks(rag_result=rag_result) as client:
+        r = client.post(
+            "/rag",
+            json={"question": "What is RAG?", "n_context_docs": 3, "temperature": 0.3},
+        )
+        assert r.status_code == 200
+        data = r.json()
 
-    m.retriever = BoomRetriever()
-    req = m.SearchRequest(query="hello", n_results=5)
+        assert data["question"] == "What is RAG?"
+        assert data["answer"] == "RAG combines retrieval + generation."
+        assert data["context_count"] == 1
+        assert data["context"][0]["doc_id"] == "doc1"
 
-    with pytest.raises(m.HTTPException) as exc:
-        await m.search(req)
+        mock_rag = client._mock_rag  # type: ignore[attr-defined]
+        mock_rag.query.assert_called_once()
 
-    assert exc.value.status_code == 500
-
-
-@pytest.mark.anyio
-async def test_ui_returns_file_response(monkeypatch):
-    # Cover main.py line 165: return FileResponse("static/index.html")
-    sentinel = object()
-
-    def fake_file_response(path):
-        assert path == "static/index.html"
-        return sentinel
-
-    monkeypatch.setattr(m, "FileResponse", fake_file_response)
-    resp = await m.ui()
-    assert resp is sentinel
+        _, kwargs = mock_rag.query.call_args
+        assert kwargs["question"] == "What is RAG?"
+        assert kwargs["n_results"] == 3
+        assert kwargs["temperature"] == 0.3
 
 
-def test_dunder_main_prints_uvicorn_command(capsys):
-    """Cover the if __name__ == '__main__' block (your missing 169-171)."""
+def test_rag_handles_llm_error_502():
+    with _client_with_mocks(rag_raises=True) as client:
+        r = client.post("/rag", json={"question": "hi"})
+        assert r.status_code == 502
+        assert "LLM service unavailable" in r.text
+
+
+def test_search_invalid_n_results_low_400():
+    with _client_with_mocks() as client:
+        r = client.post("/search", json={"query": "hello", "n_results": 0})
+        assert r.status_code == 400
+
+
+def test_search_invalid_n_results_high_400():
+    with _client_with_mocks() as client:
+        r = client.post("/search", json={"query": "hello", "n_results": 999})
+        assert r.status_code == 400
+
+
+def test_rag_empty_question_400():
+    with _client_with_mocks() as client:
+        r = client.post("/rag", json={"question": "   "})
+        assert r.status_code == 400
+
+
+def test_rag_invalid_n_context_docs_422():
+    # Pydantic validation should reject this
+    with _client_with_mocks() as client:
+        r = client.post("/rag", json={"question": "hi", "n_context_docs": 0})
+        assert r.status_code in (400, 422)
+
+
+def test_rag_invalid_temperature_422():
+    # Pydantic validation should reject if you used Field bounds
+    with _client_with_mocks() as client:
+        r = client.post("/rag", json={"question": "hi", "temperature": -1})
+        assert r.status_code in (400, 422)
+
+
+def test_search_handles_retriever_exception_returns_500():
+    # Force retriever.search to throw so we cover the error handling branch
+    search_results = [{"doc_id": "d1", "text": "ok"}]
+    with _client_with_mocks(search_results=search_results) as client:
+        client._mock_retriever.search.side_effect = RuntimeError("search failed")  # type: ignore[attr-defined]
+
+        r = client.post("/search", json={"query": "hello", "n_results": 3})
+        assert r.status_code in (500, 502)
+
+
+def test_startup_failure_sets_unhealthy_and_search_503():
+    main.retriever = None
+    main.rag_system = None  # important
+
+    with patch("retrieval.main.DocumentRetriever", side_effect=RuntimeError("boom")):
+        with TestClient(main.app, raise_server_exceptions=False) as client:
+            r = client.get("/health")
+            assert r.status_code == 200
+            data = r.json()
+            assert data["status"] == "unhealthy"
+
+            r2 = client.post("/search", json={"query": "hi", "n_results": 3})
+            assert r2.status_code == 503
+
+
+def test_test_error_endpoint_uses_general_exception_handler():
+    with TestClient(main.app, raise_server_exceptions=False) as client:
+        r = client.get("/test/error")
+        assert r.status_code == 500
+        assert r.json() == {"detail": "Internal server error"}
+
+
+def test_main_prints_run_instructions(capsys):
+    # Covers the __main__ prints (lines 222-224)
     runpy.run_module("retrieval.main", run_name="__main__")
-    out = capsys.readouterr().out.lower()
-    assert "uvicorn" in out
+    out = capsys.readouterr().out
+    assert "To run this application" in out
+    assert "uv run uvicorn" in out
+    assert "http://localhost:8000" in out

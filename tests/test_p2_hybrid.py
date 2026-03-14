@@ -34,12 +34,12 @@ def test_hybrid_search_effectiveness():
     query = "Van Helsing vampire hunter"
 
     # Test semantic-only (no hybrid)
-    retriever_semantic = DocumentRetriever(use_hybrid=False, use_reranking=False)
+    retriever_semantic = DocumentRetriever(enable_hybrid=False, enable_reranking=False)
     retriever_semantic.index_documents(sample_dir)
     results_semantic = retriever_semantic.search(query, n_results=5)
 
     # Test WITH hybrid search (semantic + BM25 + RRF)
-    retriever_hybrid = DocumentRetriever(use_hybrid=True, use_reranking=False)
+    retriever_hybrid = DocumentRetriever(enable_hybrid=True, enable_reranking=False)
     retriever_hybrid.index_documents(sample_dir)
     results_hybrid = retriever_hybrid.search(query, n_results=5)
 
@@ -119,12 +119,12 @@ def test_hybrid_vs_full_pipeline():
     query = "Mina Harker"
 
     # Hybrid only (no reranking)
-    retriever_hybrid = DocumentRetriever(use_hybrid=True, use_reranking=False)
+    retriever_hybrid = DocumentRetriever(enable_hybrid=True, enable_reranking=False)
     retriever_hybrid.index_documents(sample_dir)
     results_hybrid = retriever_hybrid.search(query, n_results=5)
 
     # Full pipeline (hybrid + reranking)
-    retriever_full = DocumentRetriever(use_hybrid=True, use_reranking=True)
+    retriever_full = DocumentRetriever(enable_hybrid=True, enable_reranking=True)
     retriever_full.index_documents(sample_dir)
     results_full = retriever_full.search(query, n_results=5)
 

@@ -1,0 +1,159 @@
+/* Keep your layout/colors the same.
+   This file only contains your existing playground-specific CSS +
+   tiny additions for the new toggles/token line. */
+
+/* ---- your original playground styles ---- */
+.playground-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.config-panel, .response-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.config-panel h2, .response-panel h2 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+.slider-container {
+  margin: 1rem 0;
+}
+
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  margin-bottom: 0.4rem;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+#systemPrompt {
+  min-height: 220px;
+  font-size: 0.95rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin: 1.2rem 0;
+}
+
+.response-area {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1.2rem;
+  min-height: 200px;
+  background: #f9fafb;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.sources-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.source-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1rem;
+  background: white;
+}
+
+.source-header {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.metadata-line {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 0.4rem;
+}
+
+#previewModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  max-width: 700px;
+  width: 90%;
+  max-height: 85vh;
+  border-radius: 8px;
+  padding: 1.5rem;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+@media (max-width: 900px) {
+  .playground-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- tiny additions for new features (no layout change) ---- */
+.playground-tools {
+  margin-top: 0.8rem;
+}
+
+.playground-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.token-estimate {
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+}

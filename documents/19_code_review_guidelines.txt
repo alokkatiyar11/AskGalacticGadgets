@@ -1,5 +1,0 @@
-Code Review Guidelines
-
-Review code for readability, security, and performance.
-Ensure tests cover new features.
-Provide constructive feedback in pull requests.

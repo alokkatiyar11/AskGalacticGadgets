@@ -1,16 +1,16 @@
 """
 Vector store for semantic search using ChromaDB.
 
-@author:  Aarti Dashore, Alok Katiyar
+@author: Kevin Lundeen
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
-@version: 1.0.0+w26
+@version: 4.0.0+w26
 """
 
 import chromadb
-from chromadb import Settings
 from chromadb.api.types import EmbeddingFunction
+from chromadb.config import Settings
 
 
 class EmbedderAdaptor(EmbeddingFunction):
@@ -26,8 +26,7 @@ class EmbedderAdaptor(EmbeddingFunction):
         """Return True since we don't support build from config, etc."""
         return True
 
-    #  implement the callable interface by calling the adaptor's embedder
-    def __call__(self, input) -> list[list[float]]:
+    def __call__(self, input) -> list[list[float]]:  # type: ignore[override]
         """
         Make embedder callable for ChromaDB compatibility and convert to a
         list from the numpy array returned by our embedder.
@@ -47,7 +46,6 @@ class VectorStore:
             collection_name: Name for the ChromaDB collection
         """
         self.embedder = EmbedderAdaptor(embedder)
-        #  use ChromaDB client
         self.client = chromadb.Client(Settings(anonymized_telemetry=False))
 
         # Delete any existing collection if present
@@ -71,15 +69,13 @@ class VectorStore:
         if not documents:
             return
 
-        #  pull out fields into separate lists like ChromaDB expects
         ids = [doc["id"] for doc in documents]
         texts = [doc["text"] for doc in documents]
         metadatas = [doc["metadata"] for doc in documents]
 
-        #  add them to ChromaDB's collection
         self.collection.add(ids=ids, documents=texts, metadatas=metadatas)
 
-    def search(self, query: str, n_results: int = 5) -> list[dict]:
+    def search(self, query: str, n_results: int = 5):
         """
         Search for documents similar to the query.
 
@@ -90,19 +86,23 @@ class VectorStore:
         Returns:
             List of result dicts with 'id', 'text', 'distance', and 'metadata'
         """
-        #  use ChromaDB's query interface
         results = self.collection.query(query_texts=[query], n_results=n_results)
 
+        # Add type checking before indexing
+        # (then we feel safe with the type-ignores below)
+        if not results or not results["ids"] or not results["ids"][0]:
+            return []
+
+        # Format results
         formatted = []
-        #  Format results
         if len(results["ids"]) > 0:
-            for i in range(len(results["ids"][0])):
+            for i in range(len(results["ids"][0])):  # type: ignore[override]
                 formatted.append(
                     {
-                        "id": results["ids"][0][i],
-                        "text": results["documents"][0][i],
-                        "distance": results["distances"][0][i],
-                        "metadata": results["metadatas"][0][i],
+                        "id": results["ids"][0][i],  # type: ignore[index]
+                        "text": results["documents"][0][i],  # type: ignore[index]
+                        "distance": results["distances"][0][i],  # type: ignore[index]
+                        "metadata": results["metadatas"][0][i],  # type: ignore[index]
                     }
                 )
 
@@ -110,5 +110,4 @@ class VectorStore:
 
     def count(self) -> int:
         """Return the number of documents in the store."""
-        #  ask the collection for its size
         return self.collection.count()

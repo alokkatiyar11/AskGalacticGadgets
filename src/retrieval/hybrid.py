@@ -1,168 +1,139 @@
 """
-retrieval.hybrid
+Hybrid search combining semantic and keyword-based retrieval.
 
-Hybrid search utilities for P2 extra credit:
-  - BM25 keyword search (rank-bm25)
-  - Reciprocal Rank Fusion (RRF) between BM25 and semantic rankings
-
-Test contract expectations:
-  - Hybrid results include 'rrf_score'
-  - Results include 'metadata' with 'chunk' (and usually 'filename')
-  - Empty directory indexing must not crash (rank-bm25 empty corpus guard)
-  - IDs are normalized to strings to prevent int/str mismatches
+@author: Kevin Lundeen
+Seattle University, ARIN 5360
+@version: 4.0.0+w26
 """
 
-from __future__ import annotations
+from collections import defaultdict
+from typing import Optional
 
-import re
-from dataclasses import dataclass
-from typing import Dict, List, Optional
-
-_TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
+from rank_bm25 import BM25Okapi
 
 
-def tokenize(text: str) -> List[str]:
-    return [t.lower() for t in _TOKEN_RE.findall(text)]
+class BM25Searcher:
+    """Keyword-based search using BM25 algorithm."""
 
+    def __init__(self):
+        """Initialize BM25 searcher."""
+        self.bm25 = None
+        self.documents = []
+        self.doc_ids = []
 
-def rrf_fuse(
-    ranked_lists: List[List[dict]],
-    *,
-    k: int = 60,
-    top_n: int = 20,
-    id_key: str = "id",
-) -> List[dict]:
-    """Reciprocal Rank Fusion (RRF) across ranked lists (best→worst)."""
-    scores: Dict[str, float] = {}
-    payload: Dict[str, dict] = {}
+    def index_documents(self, documents: list[dict]):
+        """
+        Index documents for BM25 search.
 
-    for lst in ranked_lists:
-        for rank, item in enumerate(lst, start=1):
-            doc_id = str(item[id_key])
-            scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)
-            if doc_id not in payload:
-                row = dict(item)
-                row["id"] = doc_id
-                row.setdefault("metadata", {})
-                # ensure chunk exists
-                row["metadata"] = dict(row["metadata"] or {})
-                row["metadata"].setdefault("chunk", doc_id)
-                payload[doc_id] = row
+        Args:
+            documents: List of document dicts with 'id' and 'text'
+        """
+        self.documents = documents
+        self.doc_ids = [doc["id"] for doc in documents]
 
-    fused_ids = sorted(scores.keys(), key=lambda _id: scores[_id], reverse=True)[:top_n]
-    out: List[dict] = []
-    for _id in fused_ids:
-        row = dict(payload[_id])
-        row.setdefault("metadata", {})
-        row["metadata"] = dict(row["metadata"] or {})
-        row["metadata"].setdefault("chunk", _id)
-        row["rrf_score"] = float(scores[_id])
-        out.append(row)
-    return out
+        # Tokenize documents (simple whitespace tokenization)
+        tokenized_docs = [doc["text"].lower().split() for doc in documents]
+        self.bm25 = BM25Okapi(tokenized_docs) if tokenized_docs else None
 
+    def search(self, query: str, n_results: int = 10) -> list[dict]:
+        """
+        Search using BM25 keyword matching.
 
-@dataclass
-class BM25Index:
-    ids: List[str]
-    texts: List[str]
-    metadatas: List[dict]
-    bm25: Optional[object]  # rank_bm25.BM25Okapi | None for empty
+        Args:
+            query: Search query
+            n_results: Number of results to return
 
-    @classmethod
-    def build(cls, docs: List[dict]) -> "BM25Index":
-        # Empty index: avoid rank-bm25 empty-corpus ZeroDivisionError
-        if not docs:
-            return cls(ids=[], texts=[], metadatas=[], bm25=None)
-
-        try:
-            from rank_bm25 import BM25Okapi
-        except Exception as e:  # pragma: no cover
-            raise ImportError("rank-bm25 is required. Install with: uv add rank-bm25") from e
-
-        # Normalize ids to strings
-        ids = [str(d["id"]) for d in docs]
-        texts = [d["text"] for d in docs]
-        metadatas = [d.get("metadata", {}) or {} for d in docs]
-
-        corpus = [tokenize(t) for t in texts]
-        return cls(ids=ids, texts=texts, metadatas=metadatas, bm25=BM25Okapi(corpus))
-
-    def search(self, query: str, k: int = 20) -> List[dict]:
-        if self.bm25 is None or not self.ids:
+        Returns:
+            List of results with BM25 scores
+        """
+        if self.bm25 is None:
             return []
 
-        q = tokenize(query)
-        scores = self.bm25.get_scores(q)
-        ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
+        # Tokenize query
+        query_tokens = query.lower().split()
 
-        out: List[dict] = []
-        for i in ranked:
-            doc_id = str(self.ids[i])
-            md = self.metadatas[i] if self.metadatas[i] is not None else {}
-            md = dict(md or {})
-            md.setdefault("chunk", doc_id)
+        # Get BM25 scores
+        scores = self.bm25.get_scores(query_tokens)
 
-            out.append(
-                {
-                    "id": doc_id,
-                    "text": self.texts[i],
-                    "metadata": md,
-                    "bm25_score": float(scores[i]),
-                }
-            )
-        return out
+        # Get top results
+        top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+        top_indices = top_indices[:n_results]
+
+        results = []
+        for idx in top_indices:
+            if scores[idx] > 0:  # Only include documents with non-zero scores
+                doc = self.documents[idx].copy()
+                doc["bm25_score"] = float(scores[idx])
+                results.append(doc)
+
+        return results
 
 
 class HybridSearcher:
-    def __init__(self, bm25_index: BM25Index, *, rrf_k: int = 60):
-        self.bm25 = bm25_index
-        self.rrf_k = rrf_k
+    """Combine semantic and keyword search using reciprocal rank fusion."""
 
-    def search(
-        self,
-        query: str,
-        *,
-        semantic_ranked: List[dict],
-        k_candidates: int = 20,
-    ) -> List[dict]:
-        # BM25 list (keyword)
-        bm25_ranked = self.bm25.search(query, k=k_candidates)
+    def __init__(self, k: int = 60, bm25_searcher: Optional[BM25Searcher] = None):
+        """
+        Initialize hybrid searcher.
 
-        # Normalize semantic ids to strings (defensive)
-        semantic_ranked_norm = []
-        for d in semantic_ranked:
-            x = dict(d)
-            x["id"] = str(x.get("id"))
-            x.setdefault("metadata", {})
-            x["metadata"] = dict(x["metadata"] or {})
-            x["metadata"].setdefault("chunk", x["id"])
-            semantic_ranked_norm.append(x)
+        Args:
+            k: RRF k parameter (default 60 is standard)
+        """
+        self.k = k
+        self.bm25_searcher = bm25_searcher
 
-        sem_by_id = {d["id"]: d for d in semantic_ranked_norm}
-        bm_by_id = {d["id"]: d for d in bm25_ranked}
+    def reciprocal_rank_fusion(
+        self, semantic_results: list[dict], keyword_results: list[dict]
+    ) -> list[dict]:
+        """
+        Combine results using Reciprocal Rank Fusion.
 
-        fused = rrf_fuse([semantic_ranked_norm, bm25_ranked], k=self.rrf_k, top_n=k_candidates)
+        Args:
+            semantic_results: Results from semantic search
+            keyword_results: Results from BM25 search
 
-        enriched: List[dict] = []
-        for row in fused:
-            _id = str(row["id"])
-            base = dict(sem_by_id.get(_id, bm_by_id.get(_id, row)))
+        Returns:
+            Fused and ranked results
+        """
+        # Calculate and accumulate RRF scores from semantic and keyword results
+        # Use a defaultdict where the += op adds to 0.0 if not present
+        rrf_scores: defaultdict[str, float] = defaultdict(float)
+        for results in (semantic_results, keyword_results):
+            for rank, doc in enumerate(results, start=1):
+                rrf_scores[doc["id"]] += 1 / (self.k + rank)
 
-            base["id"] = _id
-            base.setdefault("metadata", {})
-            base["metadata"] = dict(base["metadata"] or {})
-            base["metadata"].setdefault("chunk", _id)
+        # Create a document map for doing easy lookup
+        doc_map = {doc["id"]: doc.copy() for doc in keyword_results + semantic_results}
 
-            base["rrf_score"] = row["rrf_score"]
+        # Create the final ranked list
+        results = []
+        for doc_id, score in sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True):
+            doc = doc_map[doc_id]
+            doc["rrf_score"] = score
+            results.append(doc)
 
-            # carry bm25 score if available
-            if _id in bm_by_id:
-                base["bm25_score"] = bm_by_id[_id].get("bm25_score")
+        return results
 
-            # ensure text exists
-            if "text" not in base and _id in bm_by_id:
-                base["text"] = bm_by_id[_id]["text"]
+    def search(self, query: str, semantic_results: list[dict], n_results: int = 5):
+        """
+        Perform hybrid search combining semantic and keyword results.
 
-            enriched.append(base)
+        Args:
+            query: Search query
+            semantic_results: Results from semantic search
+            n_results: Number of final results to return
 
-        return enriched
+        Returns:
+            Fused results
+        """
+        if self.bm25_searcher is None:
+            # If no BM25, just return semantic results
+            return semantic_results[:n_results]
+
+        # Get BM25 results
+        keyword_results = self.bm25_searcher.search(query, n_results=20)
+
+        # Fuse results
+        fused = self.reciprocal_rank_fusion(semantic_results, keyword_results)
+
+        return fused[:n_results]

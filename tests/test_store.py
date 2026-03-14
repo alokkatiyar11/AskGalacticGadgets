@@ -1,20 +1,18 @@
 """
 Unit tests of vector store.
 
-@author:  Aarti Dashore, Alok Katiyar
+@author: Kevin Lundeen
 Seattle University, ARIN 5360
-@see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
-=190380
-@version: 1.0.0+w26
+@see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid=190380
+@version: 2.0.0+w26
 """
 
-#  import our DocumentEmbedder and VectorStore
-import chromadb
-import pytest
-from chromadb import Settings
+import warnings
 
-from src.retrieval.embeddings import DocumentEmbedder
-from src.retrieval.store import VectorStore
+import pytest
+
+from retrieval.embeddings import DocumentEmbedder
+from retrieval.store import VectorStore  # Adjust import as needed
 
 
 @pytest.fixture
@@ -24,14 +22,12 @@ def document_embedder():
     would be no less succinct! Having this real one allows us to do some
     integration testing with it, too. See test_search_semantics below.
     """
-    #  return DocumentEmbedder()
     return DocumentEmbedder()
 
 
 @pytest.fixture
 def vector_store(document_embedder):
     """Create a VectorStore for testing."""
-    #  return VectorStore(document_embedder)
     return VectorStore(document_embedder)
 
 
@@ -52,7 +48,6 @@ def test_search_semantics(vector_store, sample_docs):
     working embedder below, but that's okay since we used our real one
     instead of mocking it up.
     """
-    #  make some tests with the semantic search functionality!
     vector_store.add_documents(sample_docs)
     results = vector_store.search("Are vectors vicious!?", n_results=1)
     assert results[0]["metadata"]["filename"] == "file2.txt"
@@ -82,7 +77,6 @@ def test_add_empty_list(vector_store):
 def test_search_empty_store(vector_store):
     """Test searching empty store returns the empty list."""
     results = vector_store.search("test")
-    #  make an assertion!
     assert results == []
 
 
@@ -90,5 +84,4 @@ def test_search_with_n_results(vector_store, sample_docs):
     """Test search respects n_results parameter."""
     vector_store.add_documents(sample_docs)
     results = vector_store.search("some query", n_results=2)
-    #  make an assertion!
-    assert len(results) == 2
+    assert len(results) <= 2

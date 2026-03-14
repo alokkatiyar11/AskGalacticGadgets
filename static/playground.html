@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG & LLM Playground</title>
+
+  <!-- keep your existing theme -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- playground additions (does NOT change layout) -->
+  <link rel="stylesheet" href="playground.css">
+</head>
+
+<body>
+<nav class="top-nav">
+  <a href="/">Search Interface</a>
+  <a href="/playground.html" class="active">🧪 Playground</a>
+</nav>
+<div class="playground-container">
+  <!-- LEFT PANEL: Configuration -->
+  <div class="config-panel">
+    <h2>Playground Configuration</h2>
+
+    <div class="slider-container">
+      <div class="slider-label">
+        <span>Context Documents</span>
+        <span id="nDocsValue">3</span>
+      </div>
+      <input type="range" id="nContextDocs" min="1" max="10" value="3" step="1">
+    </div>
+
+    <div class="slider-container">
+      <div class="slider-label">
+        <span>Temperature</span>
+        <span id="tempValue">0.7</span>
+      </div>
+      <input type="range" id="temperature" min="0.0" max="1.0" value="0.7" step="0.1">
+    </div>
+
+    <label for="systemPrompt">System Prompt (editable)</label>
+    <textarea id="systemPrompt"></textarea>
+
+    <!-- NEW: prompt mode toggle + streaming toggle + token estimate (no layout change) -->
+    <div class="playground-tools">
+      <div class="playground-toggles">
+        <label><input type="radio" name="promptMode" value="actual" checked> Actual prompt</label>
+        <label><input type="radio" name="promptMode" value="simulated"> Simulated prompt</label>
+        <label style="margin-left: 0.75rem;"><input type="checkbox" id="streamPreview" checked> Stream answer</label>
+      </div>
+      <div id="tokenEstimate" class="token-estimate">Token estimate: –</div>
+    </div>
+
+    <div class="button-group">
+      <button id="btnGenerate">Generate Answer</button>
+      <button id="btnPreview">Preview Full Prompt</button>
+      <button id="btnReset" class="btn-small">Reset to Default</button>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: Question + Response -->
+  <div class="response-panel">
+    <h2>Question & Response</h2>
+
+    <label for="questionInput">Your Question</label>
+    <textarea id="questionInput" rows="4" placeholder="Ask anything..."></textarea>
+
+    <div id="responseArea" class="response-area">
+      <div class="empty-state">Enter a question and click Generate</div>
+    </div>
+
+    <div id="metadata" style="margin-top:1rem; font-size:0.9rem; color:#6b7280;"></div>
+
+    <div id="sourcesSection" class="sources-grid"></div>
+  </div>
+</div>
+
+<!-- Modal for full prompt preview -->
+<div id="previewModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Full Prompt Preview</h3>
+      <button id="btnCloseModal" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">×</button>
+    </div>
+
+    <pre id="previewContent" style="white-space:pre-wrap; background:#f1f5f9; padding:1rem; border-radius:6px; overflow:auto; max-height:70vh;"></pre>
+  </div>
+</div>
+
+<script src="playground.js"></script>
+</body>
+</html>

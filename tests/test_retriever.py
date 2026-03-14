@@ -1,11 +1,11 @@
 """
 Simple unit tests for the DocumentRetriever class.
 
-@author:  Aarti Dashore, Alok Katiyar
+@author: Kevin Lundeen
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
-@version: 1.0.0+w26
+@version: 3.0.0+w26
 """
 
 from pathlib import Path
@@ -24,7 +24,7 @@ def retriever():
 @pytest.fixture
 def sample_directory(tmp_path):
     """Create a temporary directory with sample text files."""
-    #  Create some test files
+    # Create some test files
     (tmp_path / "doc1.txt").write_text("Python is a programming language")
     (tmp_path / "doc2.txt").write_text("Machine learning uses neural networks")
     (tmp_path / "doc3.txt").write_text("Vector databases store embeddings")
@@ -35,7 +35,6 @@ def test_search_semantics(retriever, sample_directory):
     """
     Test the basic functionality we want--search!
     """
-    # FIXME
     retriever.index_documents(sample_directory)
     results = retriever.search("Are vectors vicious!?", n_results=1)
     assert results[0]["metadata"]["filename"] == "doc3.txt"
@@ -132,3 +131,29 @@ def test_index_empty_directory(retriever, tmp_path):
     retriever.index_documents(empty_dir)
 
     assert retriever.document_count == 0
+
+
+def test_with_chunks(retriever):
+    test_dir = Path(__file__).parent
+    sample_dir = str(test_dir / "data")
+    retriever.index_documents(sample_dir)
+    results = retriever.search("Is a crucifix better than garlic as a vampire repellent?")
+
+    # check that the five distances add up to something pretty small
+    distance_sum = sum(result["distance"] for result in results)
+    assert 0.1 < distance_sum <= 8.0
+
+    # it seems likely that each passage has one of the key words from the query
+    for result in results:
+        passage = result["text"].lower()  # to pick up Vampire and vampire, e.g.
+        assert "garlic" in passage or "crucifix" in passage or "vampire" in passage
+
+    # running the test case, we discover the current best passages
+    # (This may be brittle as we upgrade the embedding model!)
+    chunks = set(result["metadata"]["chunk"] for result in results)
+    assert chunks & {373, 257, 568, 206}  # picked at least one of these
+
+    results = retriever.search("What MSAI courses are 5 credits?")
+
+    assert len(results) > 0
+    assert "5 credits" in results[0]["text"]

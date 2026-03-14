@@ -32,12 +32,12 @@ def test_reranking_effectiveness():
     query = "How does Van Helsing plan to defeat Dracula?"
 
     # Test WITHOUT reranking
-    retriever_no_rerank = DocumentRetriever(use_reranking=False)
+    retriever_no_rerank = DocumentRetriever(enable_reranking=False, enable_hybrid=False)
     retriever_no_rerank.index_documents(sample_dir)
     results_no_rerank = retriever_no_rerank.search(query, n_results=5)
 
     # Test WITH reranking
-    retriever_with_rerank = DocumentRetriever(use_reranking=True)
+    retriever_with_rerank = DocumentRetriever(enable_reranking=True, enable_hybrid=False)
     retriever_with_rerank.index_documents(sample_dir)
     results_with_rerank = retriever_with_rerank.search(query, n_results=5)
 

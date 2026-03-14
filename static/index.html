@@ -1,115 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
+<!--
+@author: Alok Katiyar
+Seattle University, ARIN 5360
+@see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid=190380
+@version: 2.0.0+w26
+-->
 <head>
-  <meta charset="UTF-8" />
-  <title>P2 Document Retrieval</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="/static/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2 Document Retrieval System</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <div class="container">
-    <h1>Document Retrieval Comparison</h1>
-    <p class="subtitle">
-      Semantic vs Re-Rank vs Hybrid vs Hybrid + Re-Rank
-    </p>
-
-    <!-- Search box -->
-    <div class="search-box">
-      <input
-        id="query"
-        type="text"
-        placeholder="Enter your query (e.g., privacy risks, neural networks)"
-      />
-      <select id="topK">
-        <option value="5" selected>Top 5</option>
-        <option value="8">Top 8</option>
-        <option value="10">Top 10</option>
-      </select>
-      <button onclick="runSearch()">Search</button>
+<nav class="top-nav">
+  <a href="/" class="active">Search Interface</a>
+  <a href="/playground.html">🧪 Playground</a>
+</nav>
+<div class="main-container">
+    <!-- LEFT PANEL: Question History -->
+    <div class="panel history-panel">
+        <div class="panel-header">
+            <h2>History</h2>
+            <button class="btn-small" onclick="clearHistory()">Clear</button>
+        </div>
+        <div id="historyList" class="history-list">
+            <div class="empty-state">No searches yet</div>
+        </div>
     </div>
 
-    <!-- Results -->
-    <div id="results" class="results-grid"></div>
+    <!-- CENTER PANEL: Question Input -->
+    <div class="panel search-panel">
+        <h1>Lab 5: Document Retrieval</h1>
+
+        <!-- Health Section (kept from original) -->
+        <div class="health-section">
+            <button id="healthButton" onclick="displayHealth()">Check Health</button>
+            <div id="health-status">Click to check server status</div>
+        </div>
+
+        <!-- Search Input -->
+        <div class="search-section">
+            <textarea
+                id="queryInput"
+                placeholder="Enter your search query..."
+                rows="3"
+            ></textarea>
+
+            <div class="search-options">
+  <label class="option">
+    <input type="checkbox" id="useHybrid" checked>
+    Hybrid Search
+  </label>
+
+  <label class="option">
+    <input type="checkbox" id="useReranking" checked>
+    Reranking
+  </label>
+
+  <label class="option">
+    Results:
+    <input type="number" id="numResults" min="1" max="20" value="5">
+  </label>
+</div>
+
+            <button id="searchButton" onclick="performSearch()">Search</button>
+        </div>
+
+        <div class="metrics-section">
+  <h3>Metrics</h3>
+  <div class="metrics-grid">
+    <div class="metric">
+      <div class="metric-label">Method</div>
+      <div id="methodValue" class="metric-value">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Results</div>
+      <div id="countValue" class="metric-value">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Response Time</div>
+      <div id="timeValue" class="metric-value">—</div>
+    </div>
   </div>
-
-<script>
-async function postSearch(payload) {
-  const r = await fetch("/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!r.ok) throw new Error("Search failed");
-  return (await r.json()).results || [];
-}
-
-function formatResult(r, mode) {
-  const md = r.metadata || {};
-  const name = md.filename || r.id;
-
-  let scoreLine = "";
-  if (mode === "semantic") {
-    scoreLine = `dist: ${r.distance?.toFixed(3)}`;
-  } else if (mode === "rerank") {
-    scoreLine = `dist: ${r.distance?.toFixed(3)} | rerank: ${r.rerank_score?.toFixed(3)}`;
-  } else if (mode === "hybrid") {
-    scoreLine = `rrf: ${r.rrf_score?.toFixed(3)} | bm25: ${r.bm25_score?.toFixed(3) ?? "-"}`;
-  } else {
-    scoreLine =
-      `rrf: ${r.rrf_score?.toFixed(3)} | bm25: ${r.bm25_score?.toFixed(3) ?? "-"} | rerank: ${r.rerank_score?.toFixed(3)}`;
-  }
-
-  return `
-    <div class="result">
-      <div class="file">${name}</div>
-      <div class="score">${scoreLine}</div>
-      <div class="text">${(r.text || "").slice(0, 300)}...</div>
+</div>
     </div>
-  `;
-}
 
-function renderColumn(title, mode, results) {
-  return `
-    <div class="column">
-      <h3>${title}</h3>
-      ${results.length === 0 ? "<p class='empty'>No results</p>" :
-        results.map(r => formatResult(r, mode)).join("")}
+    <!-- RIGHT PANEL: Results Display -->
+    <div class="panel results-panel">
+        <div class="panel-header">
+            <h2>Results</h2>
+            <button class="btn-small" onclick="exportResults()">Export JSON</button>
+        </div>
+        <div id="results" class="results-list">
+            <div class="empty-state">Enter a query to search</div>
+        </div>
     </div>
-  `;
-}
+</div>
 
-async function runSearch() {
-  const query = document.getElementById("query").value.trim();
-  const n = Number(document.getElementById("topK").value);
-  if (!query) return;
-
-  document.getElementById("results").innerHTML = "<p>Searching…</p>";
-
-  try {
-    const [
-      semantic,
-      rerank,
-      hybrid,
-      hybridRerank
-    ] = await Promise.all([
-      postSearch({ query, n_results: n, use_hybrid: false, use_reranking: false }),
-      postSearch({ query, n_results: n, use_hybrid: false, use_reranking: true }),
-      postSearch({ query, n_results: n, use_hybrid: true,  use_reranking: false }),
-      postSearch({ query, n_results: n, use_hybrid: true,  use_reranking: true }),
-    ]);
-
-    document.getElementById("results").innerHTML = `
-      ${renderColumn("Semantic Only", "semantic", semantic)}
-      ${renderColumn("Retrieve + Re-Rank", "rerank", rerank)}
-      ${renderColumn("Hybrid (BM25 + Semantic)", "hybrid", hybrid)}
-      ${renderColumn("Hybrid + Re-Rank", "hybrid_rerank", hybridRerank)}
-    `;
-  } catch (e) {
-    document.getElementById("results").innerHTML =
-      "<p class='error'>Search failed</p>";
-  }
-}
-</script>
+<script src="search.js"></script>
 </body>
 </html>
