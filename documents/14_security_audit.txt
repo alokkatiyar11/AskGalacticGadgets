@@ -1,0 +1,5 @@
+Security Audit Checklist
+
+Ensure all services use HTTPS.
+Rotate credentials every 90 days.
+Review IAM permissions for least privilege.

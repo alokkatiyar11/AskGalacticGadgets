@@ -1,0 +1,5 @@
+Kubernetes Auto-Scaling
+
+Enable horizontal pod autoscaling using CPU or memory utilization thresholds.
+Use cluster autoscaler for node scaling.
+Always test scaling behavior in staging before enabling in production.

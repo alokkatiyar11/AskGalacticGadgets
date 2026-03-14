@@ -1,0 +1,5 @@
+Cloud Cost Optimization
+
+Use auto-scaling to avoid overprovisioning.
+Shut down unused resources.
+Monitor cost dashboards weekly.

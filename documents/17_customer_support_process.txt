@@ -1,0 +1,5 @@
+Customer Support Process
+
+Support tickets are triaged based on severity.
+Critical issues must be acknowledged within 15 minutes.
+Escalate unresolved issues to the engineering team.

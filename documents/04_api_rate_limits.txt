@@ -1,0 +1,5 @@
+API Rate Limiting Policy
+
+To ensure platform stability, APIs are limited to 1000 requests per minute per user.
+Burst traffic is allowed for short periods but sustained overuse will result in throttling.
+Contact the platform team if your service requires a higher quota.

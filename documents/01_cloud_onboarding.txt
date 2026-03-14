@@ -1,0 +1,6 @@
+Cloud Onboarding Guide
+
+Welcome to the internal cloud platform. To get started, request access through the IAM portal.
+After approval, configure your CLI using temporary credentials and enable MFA.
+The onboarding checklist includes setting up your development environment, reading security policies,
+and joining the DevOps communication channel.

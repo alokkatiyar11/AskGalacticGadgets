@@ -1,0 +1,5 @@
+Disaster Recovery Plan
+
+Maintain offsite backups and redundant systems.
+Test disaster recovery procedures twice a year.
+Define RTO and RPO objectives.

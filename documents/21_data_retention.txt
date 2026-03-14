@@ -1,0 +1,5 @@
+Data Retention Rules
+
+Logs are stored for 30 days.
+Backups are stored for 1 year.
+Customer deletion requests must be processed within 7 days.

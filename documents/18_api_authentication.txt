@@ -1,0 +1,5 @@
+API Authentication Guide
+
+APIs require OAuth 2.0 tokens for authentication.
+Tokens expire after one hour and must be refreshed.
+Never embed secrets in client-side applications.

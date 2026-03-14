@@ -1,0 +1,5 @@
+Training Guide for New Engineers
+
+New engineers should complete onboarding courses.
+Pair with a mentor for the first month.
+Review system architecture documentation.

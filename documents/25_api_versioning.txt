@@ -1,0 +1,5 @@
+API Versioning Strategy
+
+Use semantic versioning for APIs.
+Deprecate old versions gradually with advance notice.
+Document breaking changes clearly.

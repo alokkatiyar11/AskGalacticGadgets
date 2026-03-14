@@ -1,0 +1,5 @@
+Network Troubleshooting Guide
+
+If services cannot communicate, check DNS resolution first.
+Verify firewall rules and security groups.
+Use traceroute and ping to identify connectivity issues.

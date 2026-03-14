@@ -1,0 +1,5 @@
+Frontend Deployment Guide
+
+Build the application using the production configuration.
+Upload static assets to the CDN bucket.
+Invalidate CDN cache after deployment.

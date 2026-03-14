@@ -1,0 +1,5 @@
+Git Workflow Overview
+
+Use feature branches for all development.
+Create pull requests and request at least one reviewer.
+Squash commits before merging into main.

@@ -1,0 +1,5 @@
+Feature Flag Usage
+
+Use feature flags to test new functionality safely.
+Remove stale flags after rollout.
+Avoid nesting multiple flags in complex logic.

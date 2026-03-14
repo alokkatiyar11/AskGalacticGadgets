@@ -1,0 +1,5 @@
+Data Privacy Policy
+
+Personal data must be handled according to GDPR and CCPA guidelines.
+Access to customer data is restricted and logged.
+Data retention policies require deletion after the defined retention period.

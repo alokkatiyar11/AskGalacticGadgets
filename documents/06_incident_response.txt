@@ -1,0 +1,5 @@
+Incident Response Playbook
+
+In case of a production incident, declare severity and open a bridge call.
+Notify stakeholders using the incident notification template.
+Document root cause and remediation steps in the postmortem report.

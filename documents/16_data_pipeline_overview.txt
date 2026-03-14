@@ -1,0 +1,5 @@
+Data Pipeline Overview
+
+Data ingestion happens through streaming and batch processes.
+Transformations are executed using Spark jobs.
+Processed data is stored in the analytics warehouse.

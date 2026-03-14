@@ -1,0 +1,5 @@
+Database Backup Instructions
+
+All production databases are backed up nightly at 02:00 UTC.
+Backups are encrypted and stored in cross-region storage.
+To restore a backup, submit a request through the database operations portal.

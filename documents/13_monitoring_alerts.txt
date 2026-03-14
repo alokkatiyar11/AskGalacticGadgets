@@ -1,0 +1,4 @@
+Monitoring and Alerts
+
+Set alerts for CPU usage above 80% and error rates above 5%.
+Alerts should page the on-call engineer via the incident management tool.

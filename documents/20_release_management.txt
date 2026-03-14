@@ -1,0 +1,5 @@
+Release Management Process
+
+All releases must go through staging before production.
+Use feature flags for gradual rollouts.
+Maintain a rollback plan for every release.

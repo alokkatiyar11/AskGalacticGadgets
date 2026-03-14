@@ -1,0 +1,5 @@
+CI/CD Pipeline Guide
+
+Pipelines automatically run tests on each commit.
+Failed builds cannot be merged.
+Artifacts are stored in the build repository.

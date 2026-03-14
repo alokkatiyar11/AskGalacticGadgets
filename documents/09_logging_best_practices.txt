@@ -1,0 +1,5 @@
+Logging Best Practices
+
+Use structured JSON logging for all services.
+Include request IDs and correlation IDs for traceability.
+Avoid logging sensitive information such as passwords or tokens.

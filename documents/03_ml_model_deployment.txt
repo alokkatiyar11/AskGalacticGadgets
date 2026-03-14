@@ -1,0 +1,5 @@
+Machine Learning Model Deployment
+
+Deploy ML models using the ModelService API. First, containerize your model with the approved base image.
+Push the container to the internal registry, then create a deployment configuration YAML.
+Monitor inference latency and error rates using the observability dashboard.

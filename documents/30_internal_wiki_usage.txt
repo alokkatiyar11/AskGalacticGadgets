@@ -1,0 +1,5 @@
+Internal Wiki Usage
+
+Document all major decisions in the wiki.
+Keep pages updated and archive outdated content.
+Use consistent naming conventions.

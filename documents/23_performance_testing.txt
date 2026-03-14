@@ -1,0 +1,5 @@
+Performance Testing Guide
+
+Run load tests before major releases.
+Measure latency, throughput, and error rates.
+Document performance baselines.

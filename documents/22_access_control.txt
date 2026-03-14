@@ -1,0 +1,5 @@
+Access Control Policy
+
+Grant access based on job role.
+Remove access immediately when employees leave the organization.
+Use audit logs to track access changes.
