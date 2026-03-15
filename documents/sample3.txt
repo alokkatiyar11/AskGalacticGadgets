@@ -1,1 +1,20 @@
-Machine learning uses neural networks
+Product Sheet: NebulaNoise ANC Headphones
+
+Summary
+NebulaNoise ANC Headphones are over-ear headphones designed for travel and focused work. They support active noise cancellation (ANC), transparency mode, and multipoint Bluetooth.
+
+Key features
+- ANC modes: Off, On, Adaptive
+- Transparency mode: lets outside sound in for announcements
+- Bluetooth: 5.3 with multipoint (two devices)
+- Battery life: up to 32 hours (ANC On), up to 40 hours (ANC Off)
+- Charging: USB-C, 10 minutes quick charge for ~4 hours playback
+
+Pairing steps
+1) Hold the power button for 3 seconds to enter pairing mode.
+2) On your phone/laptop, open Bluetooth settings and select “NebulaNoise”.
+3) If multipoint is enabled, repeat for the second device.
+
+Troubleshooting
+- Audio stutters: move closer to the source and disable multipoint temporarily.
+- Mic sounds quiet: ensure the boom mic is fully extended (if attached).

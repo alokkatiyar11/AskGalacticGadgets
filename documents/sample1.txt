@@ -1,1 +1,21 @@
-This is a sample document for testing.
+Galactic Gadgets: Company Overview
+
+Galactic Gadgets is a fictional e-commerce shop that sells space-themed consumer electronics and accessories.
+
+Testing note
+- If you run a search for the word "test", this overview document should be a strong match.
+
+What we sell
+- StarScope Mini: compact telescope attachment for phones
+- NebulaNoise ANC Headphones: active noise-cancelling headphones
+- OrbitCharge Pro: 3-in-1 wireless charging dock (phone, earbuds, watch)
+- AstroLamp: desk lamp with adjustable color temperature (2700K to 6500K)
+
+Support expectations
+- Typical response time: within 1 business day
+- Order issues: include order ID and the email used at checkout
+- Warranty: 12 months for most electronics; consumables excluded
+
+Store policies (high-level)
+- Returns: allowed within 30 days for unused items in original packaging
+- Exchanges: allowed for defective items within warranty

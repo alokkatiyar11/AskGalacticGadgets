@@ -1,7 +1,7 @@
 """
 Simple unit tests for the DocumentRetriever class.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
@@ -85,6 +85,25 @@ def test_search_before_indexing_raises_error(retriever):
     """Test that search returns empty list before indexing."""
     with pytest.raises(ValueError, match="No documents indexed"):
         retriever.search("test query")
+
+
+def test_search_uses_pre_rerank_docs_when_reranking_enabled():
+    from unittest.mock import Mock
+
+    r = DocumentRetriever()
+    r._indexed = True
+    r.store = Mock()
+    r.store.search.return_value = [{"id": "d1", "text": "t", "metadata": {}}]
+
+    r.reranker = Mock()
+    r.reranker.rerank.return_value = [{"id": "d1", "text": "t", "metadata": {}}]
+
+    r.hybrid_searcher = None
+
+    r.search("q", n_results=5, use_reranking=True, use_hybrid=False, pre_rerank_docs=50)
+
+    _, kwargs = r.store.search.call_args
+    assert kwargs["n_results"] == 50
 
 
 def test_search_with_results(retriever, sample_directory):

@@ -75,6 +75,12 @@ def test_generate_http_error(mock_client_class):
         client.generate("hello")
 
 
+def test_generate_rejects_empty_prompt():
+    client = LLMClient()
+    with pytest.raises(ValueError, match="Prompt must be a non-empty string"):
+        client.generate("")
+
+
 @patch("retrieval.llm.httpx.Client")
 def test_generate_bad_json_shape(mock_client_class):
     mock_client = _setup_client(mock_client_class)
@@ -86,8 +92,8 @@ def test_generate_bad_json_shape(mock_client_class):
     mock_client.post.return_value = mock_response
 
     client = LLMClient()
-    with pytest.raises(LLMClientError):
-        client.generate("hello")
+    out = client.generate("hello")
+    assert out == "oops"
 
 
 @patch("retrieval.llm.httpx.Client")

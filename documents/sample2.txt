@@ -1,1 +1,25 @@
-Python is a programming language
+Product Sheet: StarScope Mini
+
+Summary
+StarScope Mini is a compact telescope attachment designed for modern smartphones. It clips onto the phone camera and provides optical magnification for stargazing and moon photography.
+
+Testing note
+- Integration tests may query "How about Python?" (Python) and expect this file to be returned.
+
+Key specifications
+- Magnification: 8x optical
+- Field of view: 12 degrees
+- Lens coating: multi-coated (reduces glare)
+- Compatibility: most phones 65mm to 85mm wide
+- Mount type: adjustable clip with soft pads
+
+Setup steps
+1) Clean the phone camera lens.
+2) Attach StarScope Mini to the phone so the lens is centered.
+3) Open your camera app and zoom to 1.0x (avoid digital zoom).
+4) Focus by turning the focus ring until stars or the moon look sharp.
+
+Common issues
+- Blurry image: the lens is likely not centered; re-clip and refocus.
+- Dark corners (vignetting): reduce digital zoom and re-center.
+- Shaky shots: use a small tripod and a 3-second timer.

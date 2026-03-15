@@ -1,7 +1,7 @@
 """
 Simple unit tests for hybrid search in DocumentRetriever.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380

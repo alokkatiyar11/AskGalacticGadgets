@@ -1,244 +1,364 @@
-# Lab 5: Document Retrieval System
+# Galactic Gadgets RAG Chatbot
 
-A semantic document retrieval system with a three-panel interactive web interface, built for  
-**ARIN 5360 – Seattle University**.
+Author: Alok Katiyar\
+Course: ARIN 5360 -- AI Systems Engineering\
+Project: Galactic Gadgets RAG Chatbot
 
-The system supports semantic search, PDF ingestion, document chunking, optional reranking, and hybrid (keyword + semantic) retrieval, exposed via a FastAPI backend and a browser-based UI.
+---
+# Pipeline Status
+![CI Pipeline](https://github.com/alokkatiyar/AskGalacticGadgets/actions/workflows/ci.yml/badge.svg)\
+![Python](https://img.shields.io/badge/python-3.12-blue)\
+![FastAPI](https://img.shields.io/badge/FastAPI-RAG-green)\
+![License](https://img.shields.io/badge/license-educational-lightgrey)
+
 
 ---
 
-## CI Status
+## Overview
 
-[![CI/CD Pipeline](https://github.com/alokkatiyar11/p3-trial/actions/workflows/ci.yml/badge.svg)](https://github.com/alokkatiyar11/p3-trial/actions/workflows/ci.yml)
----
+This project implements a **Retrieval-Augmented Generation (RAG) chatbot** for the fictional company **Galactic Gadgets**.
 
-## Features
+The system allows customers to ask questions about product documentation and receive **context-aware answers with citations**.
 
-- Semantic search using sentence transformers
-- Automatic document chunking with overlap
-- Support for `.txt` and `.pdf` documents
-- Optional cross-encoder reranking
-- Optional hybrid search (BM25 + semantic via RRF)
-- REST API with FastAPI
-- Three-panel responsive web UI (Lab 5)
+The chatbot integrates:
 
----
-
-## Web Interface (Lab 5)
-
-The application includes a **three-panel responsive UI**:
-
-### Left Panel (300px): Question History
-- List of previous queries from the current session
-- Clickable items to reload prior results
-- Clear history button
-- Empty state when no history exists
-
-### Center Panel (Flexible): Query Input & Metrics
-- Multi-line query input
-- Hybrid Search and Reranking toggles
-- Number of results input (default: 5, range: 1–20)
-- Search button with loading state
-- Metrics display:
-  - Search method used
-  - Result count
-  - Response time
-
-### Right Panel (400px): Results
-- Scrollable list of result cards
-- Export results as JSON
-- Empty state before search
-
-### Responsive Behavior
-- Desktop (>1200px): three panels side-by-side
-- Tablet/Mobile (<1200px): panels stack vertically
-- Each panel scrolls independently
+- document retrieval
+- reranking
+- LLM generation
+- conversational chat interface
+- source transparency
 
 ---
 
-## Setup
+## RAG Pipeline
 
-### Prerequisites
-- Python **3.10+** (recommended: 3.11)
-- `uv` package manager
+------------------------------------------------------------------------
 
-### Clone the Repository
-```bash
-git clone https://github.com/alokkatiyar11/p3-trial.git
-cd p3-trial
-```
+# Overview
 
-### Install Dependencies
-```bash
-uv sync
-```
+This project implements a **production-style Retrieval-Augmented
+Generation (RAG) chatbot** for the fictional company **Galactic
+Gadgets**.
 
-### Environment Configuration
+Customers can ask natural language questions about company documentation
+including:
 
-Create a local environment file from the template:
+-   Product specifications
+-   Setup guides
+-   Troubleshooting instructions
+-   Technical documentation
 
-```bash
-cp .env.example .env
-```
+Instead of returning raw search results, the system combines:
 
-Example `.env`:
-```env
-PORT=8000
-LOG_LEVEL=INFO
-```
+1.  Document retrieval
+2.  LLM generation
+3.  Chat interface
 
----
+to produce contextual answers with **document citations**.
 
-## Running the Server
+------------------------------------------------------------------------
 
-```bash
-uv run uvicorn src.retrieval.main:app --reload
-```
+# RAG Architecture
 
-Open the web interface at:
+The chatbot uses a Retrieval-Augmented Generation pipeline.
 
-```
-http://localhost:8000
-```
+User Question\
+↓\
+Semantic Search (vector embeddings)\
+↓\
+Reranking (improves relevance)\
+↓\
+Context Construction\
+↓\
+Prompt Creation\
+↓\
+LLM Generation (Ollama)\
+↓\
+Answer + Source Documents
 
----
-## Using Ollama for Local LLM Generation (Recommended for Playground & RAG)
+------------------------------------------------------------------------
 
-The playground (`/playground.html`) and any generation features can use **Ollama** to run LLMs completely locally and privately (no API keys or internet required after model download).
+# Key Features
 
-Ollama runs an OpenAI-compatible API on `http://localhost:11434` by default.
+## Modern Chat Interface
 
-### Ollama Setup Instructions
+The UI provides a conversational experience similar to ChatGPT.
 
-1. **Install Ollama**  
-   Download and install from the official site:  
-   https://ollama.com/download  
-   Choose the version for your OS (macOS, Windows, Linux).
+Features include:
 
-   - Linux one-liner (if preferred):  
-     ```bash
-     curl -fsSL https://ollama.com/install.sh | sh
-     ```
-2. **Open terminal and run**
-     ```bash
-     ollama serve
-     ```
-3. **Download / Pull a model**  
-  In a new terminal, pull a model (examples):
-    ```bash
-    qwen2.5:3b
-     ```
-4. **Type a prompt to get a response**
----
+-   Message bubbles for user and assistant
+-   Scrollable conversation history
+-   Auto-scroll to latest message
+-   Loading indicator ("Assistant is typing...")
+-   Timestamps on messages
+-   Export chat functionality
+-   Clear conversation button
+-   Responsive mobile/desktop layout
 
-## API Usage
+------------------------------------------------------------------------
 
-### Health Check
-```bash
-curl http://localhost:8000/health
-```
+## Source Transparency
 
-### Search
-```bash
-curl -X POST http://localhost:8000/search \
-  -H "Content-Type: application/json" \
-  -d '{
-        "query": "machine learning",
-        "n_results": 5,
-        "use_hybrid": true,
-        "use_reranking": true
-      }'
-```
+Each assistant response includes a **collapsible source panel**
+displaying:
 
----
+-   Document filename
+-   Similarity score
+-   Content preview
+-   Expandable full context
 
-## CI/CD Pipeline
+This improves **traceability and explainability**.
 
-This project uses **GitHub Actions** for continuous integration.
+------------------------------------------------------------------------
 
-### What the Pipeline Does
-The workflow defined in `.github/workflows/ci.yml` runs:
+## Chat Settings
 
-- **Linting & Formatting** using Ruff
-- **Static Analysis** for bugs and best practices
-- **Unit & Integration Tests** with pytest
-- **Coverage Reporting** for the `src/retrieval` package
+Users can adjust response behavior:
 
-### When It Runs
-- On every push to any branch
-- On every pull request to `main`
+  Setting              Description
+  -------------------- ----------------------------------------
+  Temperature          Controls creativity of responses
+  Context Docs         Number of retrieved documents
+  Theme Toggle         Light / dark mode
+  Keyboard Shortcuts   Enter to send, Shift+Enter for newline
 
-A green check indicates the code is merge-ready.
+Theme preference persists using **localStorage**.
 
----
+------------------------------------------------------------------------
 
-## Running CI Checks Locally
+# Optional Feature Implemented
 
-```bash
-# Linting
-uv run ruff check .
+## Option A -- Conversation Memory
 
-# Formatting check
-uv run ruff format --check .
+The chatbot supports **multi-turn conversations**.
 
-# Auto-fix lint & formatting (optional)
-uv run ruff check --fix .
-uv run ruff format .
+Recent conversation history is included in prompts sent to the LLM,
+enabling follow‑up questions.
 
-# Run all tests
-uv run pytest
+Example:
 
-# Run tests with coverage
-uv run pytest --cov=src/retrieval --cov-report=term
+User: What is AstroLamp?\
+Assistant: AstroLamp is a compact desk lamp...\
+User: How do I change its brightness?
 
-# Run smoke test only
-uv run pytest tests/test_smoke.py
-```
+The system correctly understands that *"its" refers to AstroLamp*.
 
----
+Conversation history:
 
+-   Stored in memory
+-   Cleared on page refresh
+-   Can be cleared manually via UI
+
+------------------------------------------------------------------------
 ## Project Structure
 
+```text
+AskGalacticGadgets/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── README.md
+├── .gitignore
+├── .env.example
+├── pyproject.toml
+│
+├── documents/
+│   ├── faq.txt
+│   ├── astrolamp.txt
+│   └── nebulanoise.txt
+│
+├── static/
+│   ├── index.html
+│   ├── style.css
+│   └── chat.js
+│
+├── src/
+│   └── retrieval/
+│       ├── __init__.py
+│       ├── main.py
+│       ├── loader.py
+│       ├── embeddings.py
+│       ├── store.py
+│       ├── retriever.py
+│       ├── reranker.py
+│       ├── llm.py
+│       └── rag.py
+│
+└── tests/
+    ├── __init__.py
+    ├── test_smoke.py
+    ├── test_llm.py
+    ├── test_rag.py
+    └── test_integration.py
 ```
-src/retrieval/
-├── loader.py        # Text & PDF loading + chunking
-├── embeddings.py    # Bi-encoder embeddings
-├── store.py         # ChromaDB vector store
-├── retriever.py    # Retrieval orchestration
-├── reranker.py     # Cross-encoder reranking
-├── hybrid.py       # BM25 + RRF hybrid logic
-├── main.py         # FastAPI application
-├── llm.py          # NEW: LLM client
-├── rag.py          # NEW: RAG system
+------------------------------------------------------------------------
 
-static/
-├── index.html          # Three-panel UI
-├── search.js           # Frontend logic
-├── style.css           # Layout & styling
-├── playground.html     # NEW: Two-panel UI
-├── playground.js       # NEW: Frontend logic
-├── playground.css      # NEW: Layout & styling
-tests/
-├── test_llm.py      # NEW: LLM tests with mocks
-├── rest_rag.py      # NEW: RAG tests with mocks
-documents/
-```
+# Setup Instructions
 
----
+## 1 Install dependencies
 
-## Screenshots
+uv sync
 
-### Three-Panel Web Interface
-_Left: History · Center: Query & Metrics · Right: Results_
+------------------------------------------------------------------------
 
-![Web UI Screenshot](images/Lab5.png)  
-_Left: Playground Configuration · Right: Questions & Response_  
-![Playground UI Screenshot](images/Playground.png)  
-_Full Prompt Preview_
-![Web UI Screenshot](images/FullPromptPreview.png)
----
+## 2 Install Ollama
 
-## Adding Documents
+Download from:
 
-Place `.txt` or `.pdf` files in the `documents/` directory and restart the server.  
-Documents are automatically indexed on startup.
+https://ollama.com/download
+
+Verify installation:
+
+ollama list
+
+------------------------------------------------------------------------
+
+## 3 Download the default model
+
+ollama pull qwen2.5:3b
+
+Verify Ollama is running:
+
+curl http://localhost:11434/api/tags
+
+------------------------------------------------------------------------
+
+# Environment Configuration
+
+Copy `.env.example`:
+
+cp .env.example .env
+
+Example configuration:
+
+LLM_BASE_URL=http://localhost:11434\
+LLM_MODEL=qwen2.5:3b\
+DEFAULT_CONTEXT_DOCS=3\
+DEFAULT_TEMPERATURE=0.7\
+PORT=8081
+
+------------------------------------------------------------------------
+
+# Start the Server
+
+uv run uvicorn src.retrieval.main:app --reload
+
+Open the interface:
+
+http://localhost:8081
+
+------------------------------------------------------------------------
+
+# Example Questions
+
+Try asking:
+
+What is RAG?
+
+What features do NebulaNoise headphones support?
+
+How do I adjust AstroLamp brightness?
+
+Each response includes **document citations**.
+
+------------------------------------------------------------------------
+
+# Testing
+
+Run tests with coverage:
+
+uv run pytest --cov=src/retrieval tests/
+
+Expected coverage: **≥ 80%**
+
+Tests include:
+
+-   LLM client tests
+-   RAG system tests
+-   Integration tests
+-   Smoke tests
+
+LLM calls are **mocked**, so tests pass even when Ollama is not running.
+
+------------------------------------------------------------------------
+
+# CI/CD Pipeline
+
+GitHub Actions automatically runs on:
+
+-   push
+-   pull requests
+
+Pipeline tasks:
+
+✔ Ruff formatting check\
+✔ Ruff linting\
+✔ MyPy type checking\
+✔ Pytest test suite\
+✔ Coverage reporting
+
+Workflow file:
+
+.github/workflows/ci.yml
+
+------------------------------------------------------------------------
+
+# Comparison to Previous Work
+
+### Compared to P2
+
+P2 implemented the **retrieval pipeline**:
+
+-   embeddings
+-   semantic search
+-   reranking
+
+P3 adds:
+
+-   conversational UI
+-   LLM generation
+-   source citations
+-   configuration system
+
+### Compared to Lab 6
+
+Lab 6 introduced **basic RAG with Ollama**.
+
+P3 improves this with:
+
+-   conversation interface
+-   settings panel
+-   conversation management
+-   improved prompts
+-   error handling
+-   CI/CD integration
+
+------------------------------------------------------------------------
+
+# Future Improvements
+
+Possible enhancements:
+
+-   streaming responses
+-   OpenAI model integration
+-   document upload support
+-   citation highlighting
+-   feedback system
+
+------------------------------------------------------------------------
+
+# Delivery Video
+
+The delivery video demonstrates:
+
+-   chat interface
+-   RAG responses
+-   source citations
+-   theme toggle
+-   settings
+-   conversation memory
+-   tests and coverage
+
+Video length: **10--15 minutes**

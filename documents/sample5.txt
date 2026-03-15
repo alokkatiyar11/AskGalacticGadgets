@@ -1,1 +1,18 @@
-Seattle is rainy.
+Product Sheet: AstroLamp (Adjustable Desk Lamp)
+
+Summary
+AstroLamp is a compact desk lamp with adjustable brightness and color temperature. It’s designed for late-night work without harsh glare.
+
+Controls
+- Tap: toggle power
+- Press and hold: adjust brightness (1% to 100%)
+- Double-tap: cycle color temperature
+
+Color temperature modes
+- Warm: 2700K (relaxing, evening)
+- Neutral: 4000K (general work)
+- Cool: 6500K (detail work, daytime)
+
+Tips
+- For reading at night, use Warm or Neutral with 30% to 60% brightness.
+- If you feel eye strain, lower brightness and reduce blue light (Warm mode).

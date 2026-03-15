@@ -1,7 +1,7 @@
 """
 Unit tests for cross-encoder reranker.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @version: 3.0.0+w26
 """

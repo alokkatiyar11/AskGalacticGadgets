@@ -1,7 +1,7 @@
 """
 Unit tests for DocumentChunker.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
@@ -69,7 +69,7 @@ def test_sample():
     test_dir = Path(__file__).parent
     sample = "dracula_by_bram_stoker"
     sample_file = test_dir / "data" / (sample + ".txt")
-    with open(sample_file) as f:
+    with open(sample_file, encoding="utf-8-sig") as f:
         text = f.read()
     chunks = chunker.chunk_text(text, sample)
     assert len(chunks) == 609

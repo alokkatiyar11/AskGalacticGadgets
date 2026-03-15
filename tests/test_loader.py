@@ -1,7 +1,7 @@
 """
 Unit tests for document loader.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
@@ -44,3 +44,39 @@ def test_loader_skips_nonexistent_directory():
     loader = DocumentLoader()
     with pytest.raises(ValueError, match="Directory 'garbage' does not exist."):
         loader.load_documents("garbage")
+
+
+def test_loader_handles_bad_utf8_text_file(tmp_path):
+    bad_file = tmp_path / "bad.txt"
+    bad_file.write_bytes(b"\xff\xfe\xfa")
+    loader = DocumentLoader()
+    documents = loader.load_documents(str(tmp_path))
+    assert documents == []
+
+
+def test_loader_pdf_empty_text_returns_empty_list(tmp_path, monkeypatch):
+    # Create a dummy PDF file path
+    pdf_path = tmp_path / "empty.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n%EOF\n")
+
+    class _Page:
+        def extract_text(self):
+            return ""
+
+    class _Reader:
+        def __init__(self, _filepath):
+            self.pages = [_Page(), _Page()]
+
+    monkeypatch.setattr("retrieval.loader.pypdf.PdfReader", _Reader)
+
+    loader = DocumentLoader()
+    documents = loader.load_documents(str(tmp_path))
+    assert documents == []
+
+
+def test_loader_pdf_reader_failure_is_caught(tmp_path):
+    pdf_path = tmp_path / "bad.pdf"
+    pdf_path.write_bytes(b"not a real pdf")
+    loader = DocumentLoader()
+    documents = loader.load_documents(str(tmp_path))
+    assert documents == []

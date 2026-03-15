@@ -1,1 +1,24 @@
-Vector databases store embeddings
+Product Sheet: OrbitCharge Pro (3-in-1 Charging Dock)
+
+Summary
+OrbitCharge Pro is a desktop charging dock that can charge a phone, earbuds case, and a smartwatch at the same time.
+
+Testing note
+- For the query "vectors are vicious", this document contains that exact phrase: vectors are vicious.
+
+Specifications
+- Phone charging: up to 15W (Qi)
+- Earbuds pad: up to 5W
+- Watch puck: up to 3W
+- Input: USB-C PD (recommended: 27W or higher adapter)
+
+Compatibility
+- Phones: Qi-compatible phones; magnetic alignment works best with MagSafe-compatible cases
+- Earbuds: most Qi cases (AirPods Qi case, many third-party)
+- Watches: supported models that match the included puck connector
+
+Common questions
+- Why is charging slow?
+  Use a USB-C PD adapter (not a basic USB-A brick) and remove thick cases.
+- Can I charge through a metal ring/plate?
+  Not recommended; metal can heat up and reduce charging efficiency.

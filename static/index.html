@@ -1,103 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
-<!--
-@author: Alok Katiyar
-Seattle University, ARIN 5360
-@see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid=190380
-@version: 2.0.0+w26
--->
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2 Document Retrieval System</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Galactic Gadgets AI Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css" />
 </head>
-<body>
-<nav class="top-nav">
-  <a href="/" class="active">Search Interface</a>
-  <a href="/playground.html">🧪 Playground</a>
-</nav>
-<div class="main-container">
-    <!-- LEFT PANEL: Question History -->
-    <div class="panel history-panel">
-        <div class="panel-header">
-            <h2>History</h2>
-            <button class="btn-small" onclick="clearHistory()">Clear</button>
+<body data-theme="light">
+  <div class="app-shell with-sidebar">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <button id="newChat" class="btn btn-primary sidebar-full-btn" type="button">+ New Chat</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title-row">
+          <h3>History</h3>
         </div>
-        <div id="historyList" class="history-list">
-            <div class="empty-state">No searches yet</div>
+        <div id="chatList" class="chat-list"></div>
+      </div>
+
+      <div class="sidebar-section about-panel">
+        <h3>About</h3>
+        <div id="aboutInfo" class="about-info">
+          <p>Loading...</p>
         </div>
-    </div>
+      </div>
+    </aside>
 
-    <!-- CENTER PANEL: Question Input -->
-    <div class="panel search-panel">
-        <h1>Lab 5: Document Retrieval</h1>
-
-        <!-- Health Section (kept from original) -->
-        <div class="health-section">
-            <button id="healthButton" onclick="displayHealth()">Check Health</button>
-            <div id="health-status">Click to check server status</div>
-        </div>
-
-        <!-- Search Input -->
-        <div class="search-section">
-            <textarea
-                id="queryInput"
-                placeholder="Enter your search query..."
-                rows="3"
-            ></textarea>
-
-            <div class="search-options">
-  <label class="option">
-    <input type="checkbox" id="useHybrid" checked>
-    Hybrid Search
-  </label>
-
-  <label class="option">
-    <input type="checkbox" id="useReranking" checked>
-    Reranking
-  </label>
-
-  <label class="option">
-    Results:
-    <input type="number" id="numResults" min="1" max="20" value="5">
-  </label>
-</div>
-
-            <button id="searchButton" onclick="performSearch()">Search</button>
+    <div class="main-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-icon">🚀</div>
+          <div>
+            <h1>Galactic Gadgets AI Assistant</h1>
+            <p>Ask product, troubleshooting, and documentation questions</p>
+          </div>
         </div>
 
-        <div class="metrics-section">
-  <h3>Metrics</h3>
-  <div class="metrics-grid">
-    <div class="metric">
-      <div class="metric-label">Method</div>
-      <div id="methodValue" class="metric-value">—</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Results</div>
-      <div id="countValue" class="metric-value">—</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Response Time</div>
-      <div id="timeValue" class="metric-value">—</div>
+        <div class="topbar-actions">
+          <button id="themeToggle" class="btn btn-secondary" type="button">Toggle Theme</button>
+          <button id="clearChat" class="btn btn-secondary" type="button">Clear</button>
+          <button id="deleteChat" class="btn btn-secondary" type="button">Delete Chat</button>
+          <button id="exportChat" class="btn btn-primary" type="button">Export</button>
+        </div>
+      </header>
+
+      <section class="control-panel">
+        <div class="control-card">
+          <label for="temperatureSlider">Temperature</label>
+          <div class="slider-row">
+            <input id="temperatureSlider" type="range" min="0" max="1" step="0.1" value="0.7" />
+            <span id="temperatureValue" class="slider-value">0.7</span>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <label for="contextSlider">Context Documents</label>
+          <div class="slider-row">
+            <input id="contextSlider" type="range" min="1" max="10" step="1" value="3" />
+            <span id="contextValue" class="slider-value">3</span>
+          </div>
+        </div>
+      </section>
+
+      <main class="chat-stage">
+        <div id="chatHistory" class="chat-history">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-state-icon">💬</div>
+            <h2>Start a conversation</h2>
+            <p>Ask about product specifications, setup guides, or troubleshooting steps.</p>
+          </div>
+        </div>
+
+        <div id="typingIndicator" class="typing-indicator hidden">
+          <div class="typing-bubble">
+            <span></span><span></span><span></span>
+          </div>
+          <span>Assistant is typing...</span>
+        </div>
+      </main>
+
+      <form id="chatForm" class="composer">
+        <div class="composer-inner">
+          <textarea
+            id="questionInput"
+            rows="1"
+            placeholder="Message Galactic Gadgets AI Assistant..."
+          ></textarea>
+          <button class="btn btn-primary send-btn" type="submit">Send</button>
+        </div>
+        <div class="composer-hint">Enter to send • Shift+Enter for newline</div>
+      </form>
     </div>
   </div>
-</div>
-    </div>
 
-    <!-- RIGHT PANEL: Results Display -->
-    <div class="panel results-panel">
-        <div class="panel-header">
-            <h2>Results</h2>
-            <button class="btn-small" onclick="exportResults()">Export JSON</button>
-        </div>
-        <div id="results" class="results-list">
-            <div class="empty-state">Enter a query to search</div>
-        </div>
-    </div>
-</div>
-
-<script src="search.js"></script>
+  <script src="/chat.js"></script>
 </body>
 </html>

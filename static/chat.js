@@ -5,7 +5,6 @@ const chatForm = document.getElementById("chatForm");
 const questionInput = document.getElementById("questionInput");
 const chatHistory = document.getElementById("chatHistory");
 const typingIndicator = document.getElementById("typingIndicator");
-const emptyState = document.getElementById("emptyState");
 const chatList = document.getElementById("chatList");
 const aboutInfo = document.getElementById("aboutInfo");
 
@@ -36,15 +35,101 @@ function showTyping(show) {
   typingIndicator.classList.toggle("hidden", !show);
 }
 
-function setEmptyStateVisible(visible) {
-  if (!emptyState) return;
-  emptyState.style.display = visible ? "flex" : "none";
-}
-
 function escapeHtml(text) {
   const div = document.createElement("div");
-  div.textContent = text;
+  div.textContent = text ?? "";
   return div.innerHTML;
+}
+
+function formatTime(timestamp) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function getSourceFilename(source, fallbackIndex) {
+  return (
+    source.doc_id ||
+    source.id ||
+    source.source ||
+    source.filename ||
+    `Document ${fallbackIndex}`
+  );
+}
+
+function getSourceScore(source) {
+  const candidates = [
+    source.score,
+    source.similarity,
+    source.similarity_score,
+    source.rerank_score,
+    source.distance,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value.toFixed(3);
+    }
+    if (typeof value === "string" && value.trim() !== "" && !Number.isNaN(Number(value))) {
+      return Number(value).toFixed(3);
+    }
+  }
+
+  return "N/A";
+}
+
+function getSourceText(source) {
+  return (
+    source.text ||
+    source.content ||
+    source.chunk ||
+    source.preview ||
+    ""
+  ).trim();
+}
+
+function buildSourcesHtml(sources) {
+  if (!sources || sources.length === 0) {
+    return "";
+  }
+
+  const cards = sources.map((source, index) => {
+    const filename = escapeHtml(getSourceFilename(source, index + 1));
+    const score = escapeHtml(getSourceScore(source));
+    const fullText = escapeHtml(getSourceText(source));
+    const preview = escapeHtml(getSourceText(source).slice(0, 260));
+
+    return `
+      <div class="source-card">
+        <div class="source-card-header">
+          <div class="source-filename">📄 ${filename}</div>
+          <div class="source-score">Score: ${score}</div>
+        </div>
+
+        <div class="source-preview">${preview || "No preview available."}${fullText.length > 260 ? "..." : ""}</div>
+
+        <details class="source-details">
+          <summary>View full context</summary>
+          <div class="source-fulltext">${fullText || "No full context available."}</div>
+        </details>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="message-sources">
+      <details>
+        <summary>📚 Sources (${sources.length})</summary>
+        <div class="sources-list">
+          ${cards}
+        </div>
+      </details>
+    </div>
+  `;
 }
 
 function renderMessages(messages) {
@@ -68,8 +153,18 @@ function renderMessages(messages) {
 
     const bubble = document.createElement("div");
     bubble.className = `message-bubble ${msg.role === "user" ? "user-bubble" : "assistant-bubble"}`;
-    bubble.innerHTML = `<div class="message-role">${msg.role === "user" ? "You" : "Assistant"}</div>
-                        <div class="message-text">${escapeHtml(msg.content).replace(/\n/g, "<br>")}</div>`;
+
+    const roleLabel = msg.role === "user" ? "You" : "Assistant";
+    const textHtml = escapeHtml(msg.content).replace(/\n/g, "<br>");
+    const timeHtml = escapeHtml(formatTime(msg.timestamp));
+    const sourcesHtml = msg.role === "assistant" ? buildSourcesHtml(msg.sources || []) : "";
+
+    bubble.innerHTML = `
+      <div class="message-role">${roleLabel}</div>
+      <div class="message-text">${textHtml}</div>
+      ${sourcesHtml}
+      <div class="message-time">${timeHtml}</div>
+    `;
 
     wrapper.appendChild(bubble);
     chatHistory.appendChild(wrapper);
@@ -111,7 +206,7 @@ async function loadAbout() {
       <p><strong>Version:</strong> ${escapeHtml(data.version || "")}</p>
       <p>${escapeHtml(data.description || "")}</p>
     `;
-  } catch (error) {
+  } catch (_error) {
     aboutInfo.innerHTML = `<p>Unable to load author details.</p>`;
   }
 }
@@ -142,15 +237,30 @@ async function loadChat(chatId) {
 
     const chat = await response.json();
     currentChatId = chat.chat_id;
-    renderMessages(chat.messages || []);
+
+    const messages = (chat.messages || []).map((msg) => ({
+      ...msg,
+      timestamp: msg.timestamp || nowIso(),
+      sources: msg.sources || [],
+    }));
+
+    renderMessages(messages);
     await loadChats();
   } catch (error) {
     console.error("Failed to load chat", error);
   }
 }
 
-function appendMessage(role, content) {
-  const updated = [...currentMessages, { role, content }];
+function appendMessage(role, content, sources = []) {
+  const updated = [
+    ...currentMessages,
+    {
+      role,
+      content,
+      timestamp: nowIso(),
+      sources,
+    },
+  ];
   renderMessages(updated);
 }
 
@@ -183,15 +293,15 @@ async function sendMessage(question) {
     showTyping(false);
 
     if (!response.ok) {
-      appendMessage("assistant", data.detail || "Something went wrong.");
+      appendMessage("assistant", `Error: ${data.detail || "Something went wrong."}`, []);
       return;
     }
 
-    appendMessage("assistant", data.answer || "No answer returned.");
+    appendMessage("assistant", data.answer || "No answer returned.", data.context || []);
     await loadChats();
-  } catch (error) {
+  } catch (_error) {
     showTyping(false);
-    appendMessage("assistant", "Network or server error.");
+    appendMessage("assistant", "Network or server error.", []);
   }
 }
 
@@ -229,7 +339,20 @@ function exportCurrentChat() {
 
   const lines = currentMessages.map((m) => {
     const prefix = m.role === "user" ? "You" : "Assistant";
-    return `${prefix}: ${m.content}`;
+    const time = formatTime(m.timestamp);
+    const sourcesBlock =
+      m.role === "assistant" && m.sources && m.sources.length > 0
+        ? `\nSources:\n${m.sources
+            .map((s, index) => {
+              const filename = getSourceFilename(s, index + 1);
+              const score = getSourceScore(s);
+              const text = getSourceText(s).slice(0, 300);
+              return `- ${filename} (score: ${score})\n  ${text}`;
+            })
+            .join("\n")}`
+        : "";
+
+    return `[${time}] ${prefix}: ${m.content}${sourcesBlock}`;
   });
 
   const blob = new Blob([lines.join("\n\n")], { type: "text/plain;charset=utf-8" });

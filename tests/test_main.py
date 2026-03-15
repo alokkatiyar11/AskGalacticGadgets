@@ -55,6 +55,18 @@ def test_health_ok():
         data = r.json()
         assert data["status"] == "healthy"
         assert "rag_available" in data
+        assert "files_indexed" in data
+
+
+def test_health_llm_is_available_exception_sets_false():
+    with _client_with_mocks() as client:
+        mock_rag = client._mock_rag  # type: ignore[attr-defined]
+        mock_rag.llm_client.is_available.side_effect = RuntimeError("boom")
+
+        r = client.get("/health")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["rag_available"] is False
 
 
 def test_search_empty_query_400():
@@ -121,13 +133,32 @@ def test_rag_success():
         assert kwargs["question"] == "What is RAG?"
         assert kwargs["n_results"] == 3
         assert kwargs["temperature"] == 0.3
+        assert kwargs["system_prompt"] is None
+        assert kwargs["use_hybrid"] is True
+        assert kwargs["use_reranking"] is True
+        assert kwargs["pre_rerank_docs"] == 20
+        assert kwargs["conversation"] == []
 
 
 def test_rag_handles_llm_error_502():
     with _client_with_mocks(rag_raises=True) as client:
         r = client.post("/rag", json={"question": "hi"})
         assert r.status_code == 502
-        assert "LLM service unavailable" in r.text
+        assert "llm failed" in r.text
+
+
+def test_rag_system_not_initialized_503():
+    with _client_with_mocks() as client:
+        main.rag_system = None
+        r = client.post("/rag", json={"question": "hi"})
+        assert r.status_code == 503
+
+
+def test_rag_value_error_returns_400():
+    with _client_with_mocks() as client:
+        client._mock_rag.query.side_effect = ValueError("bad question")  # type: ignore[attr-defined]
+        r = client.post("/rag", json={"question": "hi"})
+        assert r.status_code == 400
 
 
 def test_search_invalid_n_results_low_400():
@@ -182,6 +213,7 @@ def test_startup_failure_sets_unhealthy_and_search_503():
             assert r.status_code == 200
             data = r.json()
             assert data["status"] == "unhealthy"
+            assert "files_indexed" in data
 
             r2 = client.post("/search", json={"query": "hi", "n_results": 3})
             assert r2.status_code == 503
@@ -200,4 +232,4 @@ def test_main_prints_run_instructions(capsys):
     out = capsys.readouterr().out
     assert "To run this application" in out
     assert "uv run uvicorn" in out
-    assert "http://localhost:8000" in out
+    assert "http://127.0.0.1:8081" in out

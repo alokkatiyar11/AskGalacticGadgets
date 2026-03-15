@@ -1,0 +1,19 @@
+Galactic Gadgets: FAQ
+
+Q: What is RAG?
+A: Retrieval-Augmented Generation (RAG) is a system where the assistant first retrieves relevant documents and then generates an answer using that context.
+
+Q: Why do answers include “Sources”?
+A: Sources show which document chunks the assistant used, so you can verify facts and build trust.
+
+Q: What does “Hybrid Search” mean?
+A: Hybrid search combines keyword search (BM25) with semantic search (embeddings). This often improves relevance for product names and exact terms.
+
+Q: What does “Reranking” do?
+A: Reranking uses a slower but more accurate model to reorder the best candidate results so the top items are more likely to be correct.
+
+Q: Why might the assistant say RAG is unavailable?
+A: If the LLM service is down or unreachable, the server can still run, but the RAG endpoint may not be able to generate answers.
+
+Q: What kind of files can be indexed?
+A: This project indexes .txt and .pdf files in the documents/ directory.
