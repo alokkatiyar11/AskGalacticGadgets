@@ -1,7 +1,7 @@
 """
 Document retrieval system.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid=190380
 @version: 3.1.0+w26
@@ -53,6 +53,7 @@ class DocumentRetriever:
             self.hybrid_searcher = HybridSearcher(bm25_searcher=self.bm25_searcher)
 
         self._indexed = False
+        self._source_files: set[str] = set()
 
     def index_documents(self, directory: str):
         """
@@ -66,6 +67,13 @@ class DocumentRetriever:
         """
         before = self.document_count
         documents = self.loader.load_documents(directory)
+
+        # Track unique source filenames (useful for UI health/status displays).
+        self._source_files = {
+            str(doc.get("metadata", {}).get("filename"))
+            for doc in documents
+            if doc.get("metadata", {}).get("filename")
+        }
         self.store.add_documents(documents)
 
         # Store documents for BM25 if hybrid search is enabled
@@ -81,6 +89,7 @@ class DocumentRetriever:
         n_results: int = 5,
         use_reranking: Optional[bool] = None,
         use_hybrid: Optional[bool] = None,
+        pre_rerank_docs: Optional[int] = None,
     ) -> list[dict]:
         """
         Search for documents relevant to the query.
@@ -102,7 +111,14 @@ class DocumentRetriever:
 
         # Get initial semantic search results
         # Retrieve more initially if we're reranking or using hybrid
-        initial_k = max(20, n_results) if apply_reranking else n_results
+        if apply_reranking:
+            if pre_rerank_docs is not None:
+                # Option D: pull a larger candidate set first, then rerank down to top_k.
+                initial_k = max(n_results, int(pre_rerank_docs))
+            else:
+                initial_k = max(20, n_results)
+        else:
+            initial_k = n_results
         semantic_results = self.store.search(query, n_results=initial_k)
 
         # Apply fast hybrid search if enabled
@@ -123,3 +139,8 @@ class DocumentRetriever:
     def document_count(self) -> int:
         """Return the number of indexed documents."""
         return self.store.count()
+
+    @property
+    def file_count(self) -> int:
+        """Return the number of unique source files indexed."""
+        return len(self._source_files)

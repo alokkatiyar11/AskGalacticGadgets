@@ -1,7 +1,7 @@
 """
 Hybrid search combining semantic and keyword-based retrieval.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @version: 4.0.0+w26
 """

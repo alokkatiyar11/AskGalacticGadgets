@@ -1,5 +1,5 @@
 """
-@author: Alok Katiyar, Celine Fredieu
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
@@ -34,6 +34,7 @@ class LLMClient:
         """
         Always send Authorization header.
         Ollama does not validate it, so we use 'ollama' by default.
+        (This also keeps the client compatible with OpenAI-style endpoints.)
         """
         key = self.api_key or "ollama"
         return {

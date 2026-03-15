@@ -1,11 +1,11 @@
 """
-Vector store for semantic search using ChromaDB.
+Vector store for document retrieval.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid
 =190380
-@version: 4.0.0+w26
+@version: 2.0.0+w26
 """
 
 import chromadb

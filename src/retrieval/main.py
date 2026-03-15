@@ -1,7 +1,7 @@
 """
 Lab 4 FastAPI API.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
 @see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid=190380
 @version: 2.0.0+w26
@@ -17,6 +17,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
 
+from retrieval.config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
 from retrieval.llm import LLMClient
 from retrieval.rag import RAGSystem
 from retrieval.retriever import DocumentRetriever
@@ -34,6 +35,11 @@ class RAGRequest(BaseModel):
     question: str = Field(..., min_length=1)
     n_context_docs: int = Field(default=3, ge=1, le=10)
     temperature: float = Field(default=0.7, ge=0.0, le=1.5)
+    system_prompt: Optional[str] = None
+    use_hybrid: bool = Field(default=True)
+    use_reranking: bool = Field(default=True)
+    pre_rerank_docs: int = Field(default=20, ge=5, le=50)
+    conversation: list[dict] = Field(default_factory=list)
 
 
 class RAGResponse(BaseModel):
@@ -41,6 +47,7 @@ class RAGResponse(BaseModel):
     answer: str
     context: list[dict]
     context_count: int
+    error: Optional[str] = None
 
 
 class HealthResponse(BaseModel):
@@ -48,6 +55,7 @@ class HealthResponse(BaseModel):
 
     status: str
     documents_indexed: int
+    files_indexed: int
     message: str
     rag_available: bool  # NEW
 
@@ -79,7 +87,7 @@ async def lifespan(_app: FastAPI):
         # Index documents from the documents/ directory
         global retriever
         retriever = DocumentRetriever()
-        llm_client = LLMClient()  # default = Ollama
+        llm_client = LLMClient(base_url=LLM_BASE_URL, model=LLM_MODEL, api_key=LLM_API_KEY)
         global rag_system
         rag_system = RAGSystem(retriever=retriever, llm_client=llm_client)
         num_docs = retriever.index_documents("documents")
@@ -96,8 +104,8 @@ async def lifespan(_app: FastAPI):
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="FIXME: API Title",
-    description="Lab3: Semantic search system using ChromaDB and sentence transformers",
+    title="Galactic Gadgets RAG Chatbot",
+    description="P3: RAG chatbot system using hybrid retrieval + reranking and LLM generation",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -153,14 +161,25 @@ async def health_check():
     global retriever, rag_system
 
     documents_indexed = 0
+    files_indexed = 0
     if retriever is not None:
-        documents_indexed = getattr(retriever, "document_count", 0) or 0
+        try:
+            documents_indexed = int(getattr(retriever, "document_count", 0) or 0)
+        except (TypeError, ValueError):
+            documents_indexed = 0
+
+        try:
+            files_indexed = int(getattr(retriever, "file_count", 0) or 0)
+        except (TypeError, ValueError):
+            files_indexed = 0
 
     rag_available = False
     if rag_system is not None:
         llm = getattr(rag_system, "llm_client", None)
         if llm is not None:
             try:
+                # If the LLM service is down, we still keep the API up;
+                # we just report `rag_available=false`.
                 rag_available = bool(llm.is_available())  # <-- change here
             except Exception:
                 rag_available = False
@@ -169,6 +188,7 @@ async def health_check():
         return HealthResponse(
             status="unhealthy",
             documents_indexed=0,
+            files_indexed=0,
             message="Retriever not initialized",
             rag_available=rag_available,
         )
@@ -176,6 +196,7 @@ async def health_check():
     return HealthResponse(
         status="healthy",
         documents_indexed=documents_indexed,
+        files_indexed=files_indexed,
         message="Service is running",
         rag_available=rag_available,
     )
@@ -210,10 +231,19 @@ async def rag_query(request: RAGRequest):
     if rag_system is None:
         raise HTTPException(status_code=503, detail="RAG system not initialized")
     try:
+        # Core RAG flow:
+        # 1) retrieve candidate passages
+        # 2) build a context block
+        # 3) ask the LLM to answer using citations
         result = rag_system.query(
             question=request.question,
             n_results=request.n_context_docs,
             temperature=request.temperature,
+            system_prompt=request.system_prompt,
+            use_hybrid=request.use_hybrid,
+            use_reranking=request.use_reranking,
+            pre_rerank_docs=request.pre_rerank_docs,
+            conversation=request.conversation,
         )
 
         return RAGResponse(
@@ -221,13 +251,15 @@ async def rag_query(request: RAGRequest):
             answer=result["answer"],
             context=result["sources"],
             context_count=len(result["sources"]),
+            error=result.get("error"),
         )
 
-    except Exception:
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
         logging.exception("RAG query failed")
         raise HTTPException(
-            status_code=502,
-            detail="LLM service unavailable or error occurred",
+            status_code=502, detail=str(e) or "LLM service unavailable or error occurred"
         )
 
 

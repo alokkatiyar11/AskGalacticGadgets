@@ -1,9 +1,10 @@
 """
-Reranking functionality using cross-encoder models.
+Reranking utilities.
 
-@author: Kevin Lundeen
+@author: Alok Katiyar
 Seattle University, ARIN 5360
-@version: 3.0.0+w26
+@see: https://catalog.seattleu.edu/preview_course_nopop.php?catoid=55&coid=190380
+@version: 2.0.0+w26
 """
 
 from sentence_transformers import CrossEncoder
