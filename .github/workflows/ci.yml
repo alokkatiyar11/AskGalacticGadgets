@@ -2,39 +2,38 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
+    runs-on: ubuntu-latest
     env:
       LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
 
-    runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-      with:
-        version: "latest"
-    
-    - name: Set up Python
-      run: uv python install 3.11
-    
-    - name: Install dependencies
-      run: uv sync
-    
-    - name: Check code formatting with ruff
-      run: uv run ruff format --check .
-    
-    - name: Lint with ruff
-      run: uv run ruff check .
-    
-    - name: Type check with mypy
-      run: uv run mypy src
-    
-    - name: Run tests with pytest
-      run: uv run pytest --cov=src/retrieval --cov-report=xml --cov-report=term 
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Check code formatting with ruff
+        run: uv run ruff format --check .
+
+      - name: Lint with ruff
+        run: uv run ruff check .
+
+      - name: Type check with mypy
+        run: uv run mypy src/retrieval
+
+      - name: Run tests with pytest
+        run: uv run pytest --cov=src/retrieval tests/ --cov-report=xml --cov-report=term --cov-report=html

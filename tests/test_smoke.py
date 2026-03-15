@@ -41,3 +41,14 @@ def test_generic_exception_handler(client):
     assert res.status_code == 500
     data = res.json()
     assert "Internal server error" in data["detail"]
+
+
+def test_rag_endpoint_exists(client):
+    """Ensure RAG endpoint is reachable"""
+    res = client.post(
+        "/rag",
+        json={"question": "What is AstroLamp?", "n_context_docs": 2, "temperature": 0.7},
+    )
+
+    # Endpoint should exist even if LLM is unavailable
+    assert res.status_code in [200, 500]

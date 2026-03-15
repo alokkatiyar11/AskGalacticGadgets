@@ -13,4 +13,4 @@ LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:3b")
 
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 
-PORT = int(os.getenv("PORT", "8081"))
+PORT = int(os.getenv("PORT", "8000"))

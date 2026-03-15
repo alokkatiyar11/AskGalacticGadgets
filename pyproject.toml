@@ -1,7 +1,7 @@
 [project]
-name = "retrieval"
+name = "askgalacticgadgets"
 version = "1.0.0"
-description = "Lab 3 in ARIN 5360: setting up our document retrieval system"
+description = "P3 RAG chatbot for Galactic Gadgets using FastAPI, Ollama, and enhanced retrieval"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,7 +14,6 @@ dependencies = [
     "python-multipart>=0.0.20",
     "rank-bm25>=0.2.2",
     "sentence-transformers>=5.1.2",
-    "starlette>=0.0",
     "uvicorn>=0.38.0",
 ]
 
@@ -33,9 +32,10 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = [
-    "--cov=src/retrieval",       # always look for coverage just in these files 
-    "--cov-report=term-missing", # always report which code lines are uncovered (instead of only count)
-    "--cov-report=html",         # make the report pretty to look at
+    "--cov=src/retrieval",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
 ]
 
 [tool.ruff]
@@ -43,12 +43,15 @@ target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]    # Just errors, pyflakes, and imports
-ignore = ["E501"]           # Formatter handles line length
+select = ["E", "F", "I"]
+ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["F401"]        # Allow unused imports in tests
+"tests/*" = ["F401"]
 
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/retrieval"]
